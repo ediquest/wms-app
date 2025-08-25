@@ -3,13 +3,7 @@
 // Injects a search box on the Home page and filters interface tiles in real time.
 
 (function(){
-  const isHome = () => {
-    const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : '/';
-    const p = location.pathname;
-    // Normalize trailing slashes
-    const norm = (s) => (s || '/').replace(/\/+$/, '/') ;
-    return norm(p) === norm(base);
-  };
+  const isHome = () => location.pathname === '/' || location.pathname === '';
 
   function ensureSearchBox(){
     if(!isHome()) return;

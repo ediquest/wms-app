@@ -129,6 +129,7 @@ export function loadConfig(){
       types: Array.isArray(i.types) ? i.types : Array((i.labels || []).length).fill('alphanumeric'),
       sections: Array.isArray(i.sections) && i.sections.length ? i.sections : ['Pierwsza sekcja'],
       fieldSections: Array.isArray(i.fieldSections) ? i.fieldSections : Array((i.labels || []).length).fill(0),
+      separators: Array.isArray(i.separators) ? i.separators : [],
       includedSections: Array.isArray(i.includedSections)
         ? (Array.isArray(i.sections) && i.includedSections.length === i.sections.length
             ? i.includedSections
