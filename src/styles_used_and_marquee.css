@@ -1,0 +1,149 @@
+
+/* === Sidebar marquee only for interface links === */
+.sidebar a[href^="/iface/"] .s-item-title {
+  overflow: hidden;
+  position: relative;
+}
+
+.sidebar a[href^="/iface/"] .s-item-title .marquee {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+  animation: marquee-slide 4s linear infinite;
+  animation-play-state: paused; /* run only on hover/focus */
+}
+
+.sidebar a[href^="/iface/"] .s-item-title:hover .marquee,
+.sidebar a[href^="/iface/"] .s-item-title:focus-within .marquee {
+  animation-play-state: running;
+}
+
+/* Faster cycle; no edge gradient any more */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+
+/* Make sure Home/Workplace headings never scroll */
+.sidebar .s-home .s-item-title .marquee,
+.sidebar .s-workspace .s-item-title .marquee {
+  animation: none !important;
+  transform: none !important;
+}
+
+/* === "Used in workspace" highlighting (menu + home) === */
+:root {
+  --ok-green: #16a34a; /* fallback if your theme doesn't define --ok */
+  --used-bg: color-mix(in srgb, var(--ok, var(--ok-green)) 12%, transparent);
+  --used-br: color-mix(in srgb, var(--ok, var(--ok-green)) 40%, transparent);
+}
+
+/* Sidebar item marked as used */
+.sidebar a[href^="/iface/"].used,
+.sidebar .s-item.used {
+  background: var(--used-bg);
+  outline: 1px solid var(--used-br);
+  outline-offset: -1px;
+  border-radius: 10px;
+}
+
+/* Home cards / rows marked as used */
+.home .iface-card.used,
+.home a[href^="/iface/"].used,
+.home [data-iface].used,
+.home .iface-row.used,
+.home .card.used {
+  background: var(--used-bg);
+  outline: 1px solid var(--used-br);
+  outline-offset: -1px;
+  border-radius: 10px;
+}
+
+/* === Search box on Home === */
+.home-search-wrap {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.home-search-input {
+  min-width: clamp(220px, 30vw, 360px);
+  padding: 8px 10px;
+  border: 1px solid var(--border, #3a3a3a);
+  border-radius: 10px;
+  background: var(--input, color-mix(in srgb, var(--card, #222) 85%, #0000));
+  color: var(--text, #eaeaea);
+  outline: none;
+}
+
+.home-search-input::placeholder {
+  color: color-mix(in srgb, var(--text, #eaeaea) 60%, transparent);
+  opacity: .9;
+}
+
+.home-search-input:focus {
+  border-color: var(--ok, var(--ok-green));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok, var(--ok-green)) 20%, transparent);
+}
+
+
+/* --- Combine tiles (bottom dock) --- */
+.combine-tiles::-webkit-scrollbar { height: 8px; }
+.combine-tiles::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 8px; }
+.combine-tile:active { cursor: grabbing; transform: scale(0.98); }
+@media (prefers-color-scheme: dark) {
+  .combine-tile { background: linear-gradient(180deg, #171717, #111); border-color: rgba(255,255,255,.08); box-shadow: 0 1px 3px rgba(0,0,0,.6); }
+}
+
+
+/* --- Combine tiles (bottom dock) --- */
+.combine-tiles { justify-content: flex-start; align-items: stretch; }
+.combine-tiles::-webkit-scrollbar { height: 8px; }
+.combine-tiles::-webkit-scrollbar-thumb { background: rgba(0,0,0,.18); border-radius: 8px; }
+.combine-tile {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
+  border: 1px solid rgba(0,0,0,.10);
+  background: linear-gradient(180deg, #fff, #f7f7f7);
+  cursor: grab;
+  user-select: none;
+  min-width: 140px;
+  max-width: 260px;
+  transition: transform .08s ease, box-shadow .12s ease, border-color .12s ease, background-color .12s ease;
+}
+.combine-tile-title {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: #111;
+}
+.combine-tile:active { cursor: grabbing; transform: scale(0.985); }
+.combine-tile.drop-left { box-shadow: inset 4px 0 0 0 rgba(0,0,0,.22); border-color: rgba(0,0,0,.28); }
+.combine-tile.drop-right { box-shadow: inset -4px 0 0 0 rgba(0,0,0,.22); border-color: rgba(0,0,0,.28); }
+
+@media (prefers-color-scheme: dark) {
+  .combine-tile {
+    background: linear-gradient(180deg, #191919, #111);
+    border-color: rgba(255,255,255,.10);
+    box-shadow: 0 1px 3px rgba(0,0,0,.6);
+  }
+  .combine-tile-title { color: #eaeaea; }
+  .combine-tile.drop-left  { box-shadow: inset 4px 0 0 0 rgba(255,255,255,.25); border-color: rgba(255,255,255,.25); }
+  .combine-tile.drop-right { box-shadow: inset -4px 0 0 0 rgba(255,255,255,.25); border-color: rgba(255,255,255,.25); }
+}
+
+
+
+/* --- Snap animation for combine tiles --- */
+@keyframes tile-snap { from { transform: scale(0.96); } to { transform: scale(1); } }
+.combine-tile.snap { animation: tile-snap 180ms ease-out; }
+
+@media (prefers-color-scheme: dark) {
+  .combine-tile-title { color: #f0f0f0; }
+}

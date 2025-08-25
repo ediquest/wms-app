@@ -1,0 +1,24 @@
+
+/* /styles_used_and_marquee.css */
+
+/* Subtle green highlight for "used" interfaces in menu & home tiles */
+.sidebar a.s-item.used{
+  border-color: rgba(46, 160, 67, .55);
+  background: rgba(46, 160, 67, .12);
+}
+.sidebar a.s-item.used .s-item-title{ color: #1a7f2e; font-weight: 700; }
+.ifaceCard.used{
+  border-color: rgba(46, 160, 67, .5);
+  background: color-mix(in srgb, var(--card) 90%, rgba(46,160,67,.12));
+  box-shadow: 0 6px 24px rgba(46,160,67,.18);
+}
+
+/* Faster marquee & no left gradient overlay */
+.sidebar .s-item .s-item-title{
+  display:inline-block;
+  white-space:nowrap;
+  will-change: transform;
+}
+/* Remove any gradient mask if previously added */
+.sidebar .s-item .s-item-title::before,
+.sidebar .s-item .s-item-title::after{ display:none !important; content:none !important; }

@@ -1,0 +1,84 @@
+/* === DOCK FIX v7 — bez kreski, doklejony do dołu, toggle działa === */
+
+/* 1) Kotwica przy samym dole i klikane elementy */
+.result-dock{
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  position: fixed;
+  left: calc(var(--sidebar-w, 260px) + 16px);
+  right: 16px;
+  bottom: 0; /* doklej do dołu */
+  z-index: 30;
+  background: transparent;
+            /* dół na płasko */
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  
+  box-shadow: none;
+  pointer-events: auto;                  /* przyciski znów działają */
+}
+
+/* 2) Jedna warstwa szkła (light) */
+.result-dock::before{
+  content:"";
+  position:absolute; inset:0;
+  z-index:0;
+  backdrop-filter: blur(10px) saturate(115%);
+  -webkit-backdrop-filter: blur(10px) saturate(115%);
+  background: linear-gradient(180deg, rgba(255,255,255,.88), rgba(255,255,255,.78));
+}
+.result-dock > *{ position: relative; z-index:1; }
+
+/* 3) Główka bez kreski i z działającym przyciskiem */
+.result-dock .dock-head{
+  display:flex; align-items:center; gap:8px;
+  padding:8px 12px;
+  border-bottom: none;        /* usuń linię */
+}
+.result-dock .dock-title{ font-weight:600; margin-right:auto; }
+.result-dock .dock-toggle{ cursor:pointer; }
+
+/* 4) Treść */
+.result-dock .dock-body{ padding: 8px 12px 12px; }
+.result-dock .actions{ display:flex; gap:8px; justify-content:flex-end; }
+
+/* 5) Ukryj duplikat labela "Wynik:" pod tytułem */
+.result-dock .dock-body label.block > span{ display:none !important; }
+
+/* 6) Textarea */
+.result-dock textarea{
+  width:100%;
+  min-height:120px;
+  resize:vertical;
+  background: var(--inputBg);
+  border: 1px solid var(--border);
+  color: var(--inputText);
+  border-radius:10px;
+  padding:10px 12px;
+}
+
+/* 7) DARK theme */
+
+
+/* 8) Chowanie zawartości, zostaje sama belka z przyciskiem */
+.result-dock:not(.open) .dock-body{ display:none; }
+
+
+/* --- Dock head acts as resize handle --- */
+.result-dock .dock-head{
+  cursor: ns-resize;
+  user-select: none;
+}
+.result-dock .dock-toggle{
+  cursor: pointer;
+}
+
+
+/* darker, subtler frame in dark mode */
+body[data-theme="dark"] .result-dock{
+  border-color: color-mix(in srgb, var(--border) 60%, var(--card) 40%);
+}
+
+
+/* Override: remove light/blur overlay */
+.result-dock::before{ content: none !important; display:none !important; }

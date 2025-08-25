@@ -1,0 +1,843 @@
+@import url('/styles_used_and_marquee.css');
+:root{
+  --sidebarW: 260px;
+  --bg:#070912; --card:#0e132b; --muted:#9aa4bf; --text:#e8ecff; --accent:#7aa2ff; --border:#1b2447;
+  --inputBg:#0e1530; --inputText:#e8ecff; --btnBg:#13235b; --btnText:#e8ecff; --btnBorder:#2a3a7a;
+  --sidebarBg: color-mix(in srgb, var(--card) 85%, #0000);
+}
+
+
+*{ box-sizing:border-box }
+html,body,#root{ min-height:100% }
+body{ margin:0; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; display:flex; flex-direction:column }
+header.topbar{ border-bottom:1px solid var(--border); backdrop-filter:blur(8px); position:sticky; top:0; background:color-mix(in srgb, var(--card) 40%, #0000); z-index:10 }
+h1{ margin:8px 0; font-size:20px; letter-spacing:.3px }
+h2{ margin:10px 0 8px; font-size:18px }
+.layout{ display:flex; min-height:calc(100vh - 52px); }
+.sidebar{ width:260px; background:var(--sidebarBg); border-right:1px solid var(--border); padding:12px; position:sticky; top:52px; align-self:flex-start; height:calc(100vh - 52px); overflow:auto }
+.content{ flex:1; }
+.wrap{ width:min(1100px,92vw); margin:0 auto; padding:12px }
+.wrap.wide{ width:min(1600px, 98vw) }
+.card{ background:color-mix(in srgb, var(--card) 85%, #0000); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow:0 10px 40px rgba(0,0,0,.12) }
+.muted{ color:var(--muted) }
+.link{ color:var(--accent); text-decoration:none }
+.grid{ display:grid; grid-template-columns: 1fr 2fr; gap:10px; align-items:start; margin-top:6px }
+label.block{ display:grid; gap:6px; margin-top:10px }
+input[type="text"], textarea, select, input[type="number"]{
+  width:100%; padding:10px 12px; border-radius:10px; background:var(--inputBg); color:var(--inputText);
+  border:1px solid #233067; outline:none
+}
+textarea{ resize:vertical; min-height:140px; width:100% }
+.desc{ font-size:12px; color:var(--muted); margin-top:2px }
+.divider{ height:1px; background:var(--border); margin:12px 0 }
+footer.footer{ border-top:1px solid var(--border); margin-top:auto }
+.actions{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; align-items:center }
+.actions-split{ display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center }
+button{ padding:10px 12px; border-radius:10px; border:1px solid var(--btnBorder); background:var(--btnBg); color:var(--btnText); font-weight:600; cursor:pointer }
+button.ghost{ background:transparent }
+.labels{ display:grid; gap:10px; margin-top:8px }
+.tiles{ display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:16px }
+.catTitle{ font-weight:700; font-size:16px; padding:6px 0; border-bottom:1px solid var(--border); margin-top:16px }
+.pill{ display:inline-block; padding:6px 10px; border-radius:999px; border:1px solid var(--border) }
+.tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; border-bottom:1px solid var(--border); padding:0 6px }
+.tab{ padding:10px 14px; border-radius:8px 8px 0 0; border:1px solid var(--border); border-bottom:none; background:color-mix(in srgb, var(--card) 75%, #0000); cursor:pointer; font-weight:600 }
+.tab.active{ background:var(--card); position:relative; top:1px }
+.sep{ height:1px; background:var(--border); margin:8px 0 }
+.rowSec{ display:grid; grid-template-columns: 1.1fr 1.6fr 0.7fr 0.9fr 1fr 1fr auto; gap:10px; align-items:center }
+.drag{ cursor:grab; user-select:none }
+.dragging{ opacity:.6 }
+/* Sidebar modern */
+.s-h{ font-weight:700; margin:4px 0 8px; }
+.s-cat{ border:1px solid var(--border); border-radius:10px; margin-bottom:8px; overflow:hidden; }
+.s-cat-head{ display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:color-mix(in srgb, var(--card) 65%, #0000); border-bottom:1px solid var(--border); cursor:pointer }
+.s-cat-title{ display:flex; align-items:center; gap:8px; font-weight:700 }
+.badge{ font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border) }
+.s-list{ display:grid; gap:6px; padding:8px }
+.s-item{ display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:var(--text); background:transparent }
+.s-item:hover{ background:color-mix(in srgb, var(--card) 60%, #0000) }
+.s-item .chev{ opacity:.7 }
+.s-quick{ display:grid; gap:6px; margin-top:8px }
+/* Bottom result bar (fixed) */
+.bottomBar{ position:fixed; left: var(--sidebarW); right:0; bottom:0; background:color-mix(in srgb, var(--card) 92%, #0000); border-top:1px solid var(--border); box-shadow:0 -10px 30px rgba(0,0,0,.18); z-index:40 }
+.bottomBar .inner{ width:min(1100px,92vw); margin:0 auto; padding:12px }
+.bottomSpacer{ height:200px }
+/* Admin extras */
+.sep-admin{ height:2px; background:linear-gradient(90deg, var(--accent), transparent 60%); margin:8px 0 }
+.tabs-admin{ display:flex; gap:6px; flex-wrap:wrap; margin:6px 0 12px; border-bottom:1px solid var(--border); padding:0 6px }
+.tab-admin{ padding:8px 12px; border-radius:8px 8px 0 0; border:1px solid var(--border); border-bottom:none; background:color-mix(in srgb, var(--card) 75%, #0000); cursor:pointer; font-weight:600; display:flex; align-items:center; gap:8px }
+.tab-admin.active{ background:var(--card); position:relative; top:1px }
+.tab-admin .close{ border:0; background:transparent; cursor:pointer; color:var(--muted); font-weight:700 }
+.tab-admin .close:hover{ color:var(--text) }
+
+/* ==== v9.3 additions ==== */
+.reqBorder{ border:2px solid #e25454 !important; }
+.reqMark{ color:#e25454; margin-left:6px }
+.table{ width:100%; border-collapse:collapse; }
+.table th, .table td{ text-align:left; padding:10px 12px; border-bottom:1px solid var(--border) }
+.table th{ font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:var(--muted) }
+.table-actions{ display:flex; gap:8px; flex-wrap:wrap }
+.icon{ width:16px; height:16px; display:inline-block; vertical-align:middle }
+.s-item .icon{ margin-right:8px }
+.btnInline{ display:inline-flex; align-items:center; gap:8px }
+
+/* v9.3.1 */
+.tab-admin.addBtn, .tabs-admin > .tab-admin { border:1px solid var(--border); border-bottom:none; border-radius:8px 8px 0 0; background:color-mix(in srgb, var(--card) 75%, #0000); }
+.tabs-admin > .tab-admin:hover{ background:color-mix(in srgb, var(--card) 65%, #0000) }
+
+/* ==== v9.3.3: Nicer interface tiles on Home ==== */
+.ifaceGrid{ display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:16px; margin-top:12px }
+.ifaceCard{ display:flex; flex-direction:column; gap:8px; text-decoration:none; color:var(--text);
+  border:1px solid var(--border); border-radius:14px; padding:14px;
+  background:color-mix(in srgb, var(--card) 88%, #0000);
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+}
+.ifaceCard:hover{ transform:translateY(-2px);
+  box-shadow:0 8px 30px rgba(0,0,0,.18);
+  border-color:color-mix(in srgb, var(--accent) 40%, var(--border));
+  background:color-mix(in srgb, var(--card) 96%, #0000);
+}
+.ifaceTitle{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:16px; letter-spacing:.2px }
+.ifaceTitle .icon{ width:18px; height:18px }
+.ifaceMeta{ display:flex; align-items:center; gap:10px; color:var(--muted); font-size:13px }
+.badge.cat{ padding:2px 8px; border-radius:999px; border:1px solid var(--border); font-size:12px }
+
+/* ==== v9.4: Softer title + summary clamp ==== */
+.ifaceTitle{ font-weight:600; font-size:15.5px; letter-spacing:.1px }
+.ifaceTitle .icon{ width:16px; height:16px; opacity:.9 }
+.ifaceSummary{ color:var(--muted); font-size:13px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:1.6em }
+
+/* ==== v9.4.3: Modern modal ==== */
+.modalBackdrop{ position:fixed; inset:0; background:rgba(0,0,0,.45); backdrop-filter: blur(6px); display:flex; align-items:center; justify-content:center; z-index:9999 }
+.modalCard{ width:min(520px, 92vw); background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 30px 100px rgba(0,0,0,.35); overflow:hidden; transform: scale(1); animation: modalIn .14s ease }
+@keyframes modalIn{ from{ transform: translateY(6px); opacity:.0 } to{ transform: translateY(0); opacity:1 } }
+.modalHeader{ display:flex; align-items:center; justify-content:space-between; padding:12px 14px; border-bottom:1px solid var(--border) }
+.modalTitle{ font-weight:700 }
+.modalClose{ border:0; background:transparent; color:var(--muted); font-size:22px; line-height:1; cursor:pointer }
+.modalBody{ padding:14px }
+.modalMsg{ color:var(--text); opacity:.95 }
+.modalField{ display:grid; gap:8px; margin-top:10px }
+.modalLabel{ font-size:13px; color:var(--muted) }
+.modalActions{ display:flex; gap:10px; justify-content:flex-end; padding:12px 14px; border-top:1px solid var(--border) }
+.btnPrimary{ background:var(--accent); color:white; border:1px solid transparent; }
+.modalCard input, .modalCard textarea{ width:100%; padding:10px 12px; border-radius:10px; background:var(--inputBg); color:var(--inputText); border:1px solid var(--border); outline:none }
+
+/* v9.4.6 layout tweaks */
+.topbar{ padding-left: var(--sidebarW); }
+@media (max-width: 900px){ .topbar{ padding-left: 0; } }
+.bottomBar{ left: var(--sidebarW); right: 0; }
+@media (max-width: 900px){ .bottomBar{ left: 0; } }
+
+/* v9.6 scrollable tabs */
+.tabsWrap .tabsArrow{ width:32px; height:32px; border-radius:999px; border:1px solid var(--border); background:var(--card); opacity:.9 }
+.tabsWrap .tabsArrow:disabled{ opacity:.35; cursor:not-allowed }
+.tabsScroll{ cursor: grab }
+.tabsScroll:active{ cursor: grabbing }
+.tabsScroll .tab, .tabsScroll .tab-admin{ display:inline-flex; flex:0 0 auto }
+
+.tabsScroll .tabs{ flex-wrap:nowrap; display:inline-flex }
+
+.tabsScroll .tabs-admin{ flex-wrap:nowrap; display:inline-flex }
+
+.sep-admin.strong{ height:2px; background: var(--borderStrong, var(--border)); margin:8px 0; border-radius:2px }
+
+
+/* v9.7.7 — subtle pill tabs */
+.tabs .tab{
+  appearance:none;
+  background:transparent;
+  border:1px solid var(--border);
+  color:var(--muted);
+  padding:6px 12px;
+  border-radius:999px;
+  font-weight:500;
+  line-height:1;
+  transition:background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.tabs .tab:hover{
+  background:var(--card);
+  color:var(--text);
+}
+.tabs .tab.active{
+  background:var(--card);
+  color:var(--text);
+  border-color:var(--border);
+  box-shadow:0 1px 2px rgba(0,0,0,.04);
+}
+
+/* v9.7.7 — inputs width on interface page */
+.inputField{
+  width:320px;
+  max-width:100%;
+}
+/* ensure required border is visible but not aggressive */
+.reqBorder{
+  border:1px solid #e04444 !important;
+  border-radius:8px;
+}
+
+
+/* v9.7.8 — label block tuning */
+.labelBlock .labelRow .name{
+  font-weight: 600;
+}
+.labelBlock .meta{
+  margin-top: 2px;
+}
+.small{
+  font-size: .85em;
+  color: var(--muted);
+}
+.reqStar{
+  color: #e04444;
+  margin-left: 4px;
+  font-weight: 700;
+}
+.desc{
+  font-size: .9em;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+
+/* v9.7.12 — clickable cells + color panel + section header */
+.clickCell{ cursor:pointer; }
+.clickCell:hover{ background: color-mix(in srgb, var(--card) 65%, transparent); }
+.numCell{ cursor:pointer; font-variant-numeric: tabular-nums; }
+.numCell:hover{ background: color-mix(in srgb, var(--card) 65%, transparent); }
+.colorPanel{ margin-top:8px; padding:8px; border:1px solid var(--border); border-radius:10px; background: var(--card); display:inline-block }
+.tab-admin{ transition: background .15s ease }
+.secHeader{ font-size: 1rem; }
+
+/* v9.7.13 — safer hovers */
+.clickCell:hover, .numCell:hover{
+  outline: 2px solid color-mix(in srgb, var(--text) 10%, transparent);
+  outline-offset: -2px;
+}
+
+/* v9.7.21 — styled Home item */
+.s-head .s-home{ border-radius:12px; }
+
+.includeCell{ cursor:pointer }
+.includeCell:hover{ background: color-mix(in srgb, var(--accent) 10%, #0000) }
+
+
+/* Modern admin button */
+.btn{ padding:10px 14px; border:1px solid var(--btnBorder); border-radius:12px; background:var(--btnBg); color:var(--btnText); text-decoration:none; display:inline-flex; align-items:center; gap:8px; font-weight:600; transition:transform .12s ease, box-shadow .12s ease, background .12s ease }
+.btn:hover{ transform:translateY(-1px); box-shadow:0 6px 20px rgba(0,0,0,.18) }
+.adminBtn{ background:linear-gradient(180deg, color-mix(in srgb, var(--btnBg) 85%, #0000), var(--btnBg)); }
+.adminBtn:hover{ background:color-mix(in srgb, var(--btnBg) 85%, #0000); }
+
+
+/* inline label/select in topbar */
+header .inline{ display:inline-flex; align-items:center; gap:6px; color:var(--text) }
+header .inline select{ background:var(--inputBg); color:var(--inputText); border:1px solid var(--border); border-radius:8px; padding:6px 8px }
+header .inline span{ font-size:12px; opacity:.9 }
+
+
+/* Sidebar danger button */
+.s-item.danger {
+  background: rgba(220, 53, 69, 0.10);
+  border: 1px solid rgba(220, 53, 69, 0.45);
+  color: #a31120;
+  font-weight: 600;
+}
+.s-item.danger:hover {
+  background: rgba(220, 53, 69, 0.16);
+}
+
+/* Tiny toggle */
+.toggle {
+  min-width: 48px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid rgba(0,0,0,.2);
+  border-radius: 12px;
+  background: rgba(0,0,0,.05);
+  font-size: 12px;
+  line-height: 22px;
+}
+.toggle:hover { background: rgba(0,0,0,.08); }
+
+
+/* v16: danger delete button wider & nicer */
+.s-item.danger{
+  width:100%;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 14px;
+  margin-top:10px;
+  border-radius:12px;
+  background:rgba(220,53,69,0.10);
+  border:1px solid rgba(220,53,69,0.45);
+  color:#a31120;
+  font-weight:600;
+  text-decoration:none;
+  cursor:pointer;
+}
+.s-item.danger:hover{ background:rgba(220,53,69,0.16); }
+.s-item.danger .s-item-title{ flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* v16: tiny toggle */
+.toggle{
+  min-width:56px;
+  height:24px;
+  padding:0 10px;
+  border:1px solid rgba(0,0,0,.2);
+  border-radius:12px;
+  background:rgba(0,0,0,.05);
+  font-size:12px;
+  line-height:22px;
+}
+.toggle:hover{ background:rgba(0,0,0,.08); }
+
+
+/* v17 autosave row */
+.autosaveRow{
+  width:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:10px;
+  padding:8px 0 10px;
+}
+.toggle.on{
+  background:rgba(46, 160, 67, 0.16);
+  border-color:rgba(46, 160, 67, 0.55);
+  color:#1a7f2e;
+  font-weight:700;
+}
+
+/* === Bottom dock – glass look, dark/light aware === */
+:root{
+  --sidebar-w: 260px;
+
+  /* Light */
+  --dock-bg-light-1: rgba(255,255,255,.85);
+  --dock-bg-light-2: rgba(255,255,255,.75);
+  --dock-stroke-light: rgba(0,0,0,.08);
+  --dock-shadow-light: 0 10px 30px rgba(0,0,0,.12);
+
+  /* Dark */
+  --dock-bg-dark-1: rgba(26,28,36,.88);
+  --dock-bg-dark-2: rgba(16,18,25,.72);
+  --dock-stroke-dark: rgba(255,255,255,.08);
+  --dock-shadow-dark: 0 12px 40px rgba(0,0,0,.45);
+
+  --dock-radius: 14px;
+  --dock-pad: 12px;
+}
+
+.dock{
+  position: fixed;
+  left: calc(var(--sidebar-w) + 16px);
+  right: 24px;
+  bottom: 16px;
+  z-index: 30;
+  pointer-events: none; /* klik tylko na panel/btn */
+}
+
+.dock .dock-panel{
+  pointer-events: auto;
+  border-radius: var(--dock-radius);
+  padding: var(--dock-pad);
+  backdrop-filter: blur(10px) saturate(115%);
+  -webkit-backdrop-filter: blur(10px) saturate(115%);
+  border: 1px solid var(--dock-stroke-light);
+  background: linear-gradient(180deg,var(--dock-bg-light-1),var(--dock-bg-light-2));
+  box-shadow: var(--dock-shadow-light);
+  transition: transform .35s ease, opacity .25s ease, box-shadow .2s ease;
+}
+
+/* Dark theme variants – działa, jeśli dodajesz klasę lub data-attr na <body> */
+body.theme-dark .dock .dock-panel,
+body[data-theme="dark"] .dock .dock-panel{
+  border-color: var(--dock-stroke-dark);
+  background: linear-gradient(180deg,var(--dock-bg-dark-1),var(--dock-bg-dark-2));
+  box-shadow: var(--dock-shadow-dark);
+}
+
+/* Schowanie – tylko guzik pozostaje */
+.dock-closed .dock-panel{
+  transform: translateY(calc(100% + 12px));
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Toggle pill nad panelem */
+.dock .dock-toggle{
+  position: absolute;
+  right: 18px;
+  bottom: calc(100% + 6px);
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: 12px;
+  line-height: 1;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--dock-stroke-light);
+  background: var(--dock-bg-light-1);
+  backdrop-filter: blur(6px) saturate(115%);
+  -webkit-backdrop-filter: blur(6px) saturate(115%);
+  cursor: pointer;
+  user-select: none;
+  box-shadow: var(--dock-shadow-light);
+}
+body.theme-dark .dock .dock-toggle,
+body[data-theme="dark"] .dock .dock-toggle{
+  border-color: var(--dock-stroke-dark);
+  background: var(--dock-bg-dark-1);
+  box-shadow: var(--dock-shadow-dark);
+}
+.dock .dock-toggle:hover{ transform: translateY(-1px); }
+
+/* Tytuł i akcje w panelu */
+.dock .dock-head{
+  display:flex; align-items:center; gap:.75rem; margin: 2px 2px 8px 2px;
+  font-size: 12px; opacity:.9; text-transform: uppercase; letter-spacing:.04em;
+}
+.dock .dock-actions{
+  display:flex; align-items:center; gap:.5rem; margin-top:8px; flex-wrap:wrap;
+}
+
+/* Pole wynikowe */
+.dock textarea{
+  width: 100%;
+  min-height: 120px;
+  max-height: 40vh;
+  resize: vertical;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  border: 1px solid rgba(0,0,0,.12);
+  background: rgba(255,255,255,.7);
+  color: #0d1117;
+}
+body.theme-dark .dock textarea,
+body[data-theme="dark"] .dock textarea{
+  border-color: rgba(255,255,255,.12);
+  background: rgba(12,14,18,.55);
+  color: #e6edf3;
+}
+.dock textarea:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.25);
+}
+
+/* Przyciski w akcjach, spójne z panelem */
+.dock .dock-actions .btn{
+  appearance:none; border:1px solid rgba(0,0,0,.12);
+  background: rgba(255,255,255,.85); border-radius: 10px;
+  padding: 8px 12px; font-size: 13px; cursor:pointer;
+}
+body.theme-dark .dock .dock-actions .btn,
+body[data-theme="dark"] .dock .dock-actions .btn{
+  border-color: rgba(255,255,255,.14);
+  background: rgba(20,22,29,.7); color: #e6edf3;
+}
+.dock .dock-actions .btn:hover{ transform: translateY(-1px); }
+
+/* === Fix: Dock – ciemne motywy i brak białej „ramy” === */
+.dock,
+.dock * {
+  background-clip: padding-box; /* bez „prześwitów” cieni */
+}
+
+/* jeśli jakiś global dał białe tło kontenerowi docka – zerujemy */
+.dock { background: transparent !important; }
+
+/* Light domyślnie (jak wcześniej) – bez zmian */
+
+/* Dark: wspieraj wiele heurystyk, żeby zawsze trafić */
+body.theme-dark .dock .dock-panel,
+body[data-theme="dark"] .dock .dock-panel,
+body[class*="theme-"][class*="dark"] .dock .dock-panel {
+  border-color: rgba(255,255,255,.08);
+  background: linear-gradient(180deg, rgba(26,28,36,.88), rgba(16,18,25,.72));
+  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+}
+
+/* Tekstarea w dark */
+body.theme-dark .dock textarea,
+body[data-theme="dark"] .dock textarea,
+body[class*="theme-"][class*="dark"] .dock textarea {
+  border-color: rgba(255,255,255,.12);
+  background: rgba(12,14,18,.55);
+  color: #e6edf3;
+}
+
+/* Toggle w dark */
+body.theme-dark .dock .dock-toggle,
+body[data-theme="dark"] .dock .dock-toggle,
+body[class*="theme-"][class*="dark"] .dock .dock-toggle {
+  border-color: rgba(255,255,255,.08);
+  background: rgba(26,28,36,.88);
+  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+}
+
+/* Panel niech będzie trochę węższy, z auto-centrowaniem na osi X */
+.dock {
+  left: calc(var(--sidebar-w, 260px) + 16px);
+  right: 24px;
+}
+.dock .dock-panel {
+  max-width: 1200px;            /* możesz zmniejszyć/zwiększyć */
+  margin-left: auto;            /* przesuwa w prawo (do treści) */
+}
+
+/* Gdy coś narzuca białe tło na przyciski – nadpisz łagodnie */
+.dock .dock-actions .btn {
+  background: rgba(255,255,255,.85);
+}
+body[data-theme="dark"] .dock .dock-actions .btn,
+body.theme-dark .dock .dock-actions .btn,
+body[class*="theme-"][class*="dark"] .dock .dock-actions .btn {
+  background: rgba(20,22,29,.7);
+  color: #e6edf3;
+}
+
+/* === Topbar: "Schemat kolorów" – no-wrap & wider select === */
+header .inline{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  color:var(--text);
+  white-space:nowrap; /* nie zawijaj etykiety z selectem */
+}
+header .inline span{
+  font-size:12px;
+  opacity:.9;
+  white-space:nowrap; /* nie zawijaj samego napisu */
+}
+header .inline select{
+  background:var(--inputBg);
+  color:var(--inputText);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:6px 8px;
+  min-width:190px; /* lekko szerszy select, żeby tekst się mieścił */
+}
+@media (max-width: 480px){
+  header .inline select{ min-width:150px; }
+}
+/* === End topbar patch === */
+
+/* === Topbar selects – clean, modern, no weird left line === */
+.topbar .inline select{
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  appearance:none;
+  background-color: var(--inputBg);
+  color: var(--inputText);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 32px 6px 10px;      /* miejsce na strzałkę po prawej */
+  line-height: 1.2;
+  min-height: 34px;
+  min-width: 190px;
+  background-clip: padding-box;     /* zapobiega „kreskom” na krawędziach */
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+
+  /* własna strzałka */
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%23444' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 14px 14px;
+}
+
+.topbar .inline select:hover{
+  border-color: color-mix(in srgb, var(--border) 60%, var(--text) 40%);
+}
+
+.topbar .inline select:focus-visible{
+  border-color: var(--primary, #3b82f6);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #3b82f6) 20%, transparent);
+}
+
+/* Dark theme – jaśniejsza strzałka i tło */
+:where(
+  body[data-theme*="dark"],
+  body.theme-dark,
+  body[class*="theme-dark"],
+  body[class*="dark"]
+) .topbar .inline select{
+  background-color: color-mix(in srgb, var(--card, #0b0e12) 80%, white 6%);
+  border-color: color-mix(in srgb, var(--border) 70%, white 10%);
+  color: var(--inputText, #e6edf3);
+  /* biała strzałka w dark */
+  background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%23bbb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+:where(
+  body[data-theme*="dark"],
+  body.theme-dark,
+  body[class*="theme-dark"],
+  body[class*="dark"]
+) .topbar .inline select:focus-visible{
+  border-color: var(--primary, #60a5fa);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #60a5fa) 22%, transparent);
+}
+
+/* Etykieta + select w jednej linii – nie zawijać */
+.topbar .inline{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+/* (opcjonalnie) węższe minimum na bardzo małych ekranach */
+@media (max-width: 480px){
+  .topbar .inline select{ min-width: 150px; }
+}
+
+/* === Sidebar hover fix (readable in light & dark) === */
+.s-item{
+  transition: background .12s ease, border-color .12s ease, color .12s ease;
+}
+.s-item:hover{
+  background: color-mix(in srgb, var(--card) 90%, #0000);
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
+  color: var(--text);
+}
+.s-item:hover .s-item-title,
+.s-item:hover .chev,
+.s-item:hover .badge{
+  color: var(--text);
+  opacity: .95;
+}
+.s-item:focus-visible{
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 2px;
+}
+.s-item, .s-item *{
+  color: inherit;
+  text-decoration: none;
+}
+/* === End hover fix === */
+
+/* === Topbar selects — no flash on open === */
+
+/* 1) Stabilne tło/kolory w każdym stanie */
+.topbar .inline select,
+.topbar .inline select:focus,
+.topbar .inline select:active,
+.topbar .inline select:focus-visible{
+  background-color: var(--inputBg) !important;
+  color: var(--inputText) !important;
+  border-color: var(--border) !important;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 2) Wyłącz zmiany tła — tylko border/shadow może się animować */
+.topbar .inline select{
+  transition: border-color .12s ease, box-shadow .12s ease !important;
+  /* jeśli wcześniej dodałem transition na background — nadpisujemy: */
+  will-change: auto;
+}
+
+/* 3) Dark theme — też bez zmiany tła na focus */
+:where(body[data-theme*="dark"], body.theme-dark, body[class*="dark"])
+  .topbar .inline select,
+:where(body[data-theme*="dark"], body.theme-dark, body[class*="dark"])
+  .topbar .inline select:focus,
+:where(body[data-theme*="dark"], body.theme-dark, body[class*="dark"])
+  .topbar .inline select:active,
+:where(body[data-theme*="dark"], body.theme-dark, body[class*="dark"])
+  .topbar .inline select:focus-visible{
+  background-color: color-mix(in srgb, var(--card, #0b0e12) 80%, white 6%) !important;
+  color: var(--inputText, #e6edf3) !important;
+  border-color: color-mix(in srgb, var(--border) 70%, white 10%) !important;
+}
+
+/* 4) Dodatkowo – jeśli masz globalny reset z animacją tła na * (czasem spotykane),
+      to wyłączamy to tylko dla selectów w topbarze: */
+.topbar .inline select{
+  animation: none !important;
+}
+
+/* 5) (opcjonalnie) mniej agresywny focus ring */
+.topbar .inline select:focus-visible{
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #3b82f6) 20%, transparent);
+}
+:where(body[data-theme*="dark"], body.theme-dark, body[class*="dark"])
+  .topbar .inline select:focus-visible{
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #60a5fa) 22%, transparent);
+}
+
+/* === Dark themes: stabilny HOVER (bez jasnego błysku) === */
+:where(body[data-theme="dark"],
+       body[data-theme="dark+"],
+       body[data-theme="dark (visual studio)"],
+       body[data-theme="abyss"],
+       body[data-theme*="dark"],
+       body.theme-dark,
+       body[class*="theme-dark"],
+       body[class*="dark"]) {
+
+  /* 1) Pozycje menu (lista po lewej) */
+  .s-item:hover{
+    /* przyciemnij kartę zamiast jej rozjaśniać */
+    background: color-mix(in srgb, var(--card, #0b0e12) 80%, #000 20%) !important;
+    color: var(--text, #e6edf3) !important;
+    border-color: color-mix(in srgb, var(--border, #2a2f36) 70%, #fff 10%) !important;
+  }
+  .s-item:hover .s-item-title,
+  .s-item:hover .chev,
+  .s-item:hover .badge{
+    color: var(--text, #e6edf3) !important;
+    opacity: .95 !important;
+  }
+
+  /* 2) Selecty w topbarze (język / schemat) – zero zmiany tła na hover/focus */
+  .lang-select, .theme-select{
+    background-color: color-mix(in srgb, var(--card, #0b0e12) 80%, white 6%) !important;
+    border-color: color-mix(in srgb, var(--border, #2a2f36) 70%, white 10%) !important;
+    color: var(--inputText, #e6edf3) !important;
+    transition: border-color .12s ease, box-shadow .12s ease !important; /* bez animacji tła */
+    animation: none !important;
+  }
+  .lang-select:hover, .lang-select:focus, .lang-select:active,
+  .theme-select:hover, .theme-select:focus, .theme-select:active{
+    background-color: color-mix(in srgb, var(--card, #0b0e12) 80%, white 6%) !important;
+    color: var(--inputText, #e6edf3) !important;
+    border-color: color-mix(in srgb, var(--border, #2a2f36) 70%, white 10%) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary, #60a5fa) 22%, transparent) !important;
+  }
+
+  /* 3) Gdyby coś globalnie rozjaśniało linki na hover – przywróć dziedziczenie */
+  .s-item, .s-item *{
+    color: inherit !important;
+    text-decoration: none;
+  }
+}
+/* === end: dark hover fix === */
+
+/* Autosave: większy i bez zawijania tekstu */
+.sidebar .s-autosave{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  justify-content:flex-end; /* po prawej w wierszu */
+}
+
+.sidebar .autosave-toggle{
+  display: inline-flex;      /* zamiast inline-block */
+  align-items: center;       /* pion */
+  justify-content: center;   /* poziom */
+  line-height: 1;            /* bez sztucznego rozciągania tekstu */
+  min-height: 36px;          /* lub tyle, ile chcesz */
+  padding: 6px 14px;         /* dopasuj do wyglądu */
+}
+
+/* jeśli gdzieś .toggle ma sztywne ograniczenia, nadpisz je tu */
+.sidebar .toggle.autosave-toggle{
+  max-width: none;
+  overflow: visible;
+}
+
+
+
+/* --- LocalStorage usage indicator at sidebar bottom --- */
+
+.sidebar .ls-usage{
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  text-align: center;
+  padding: 8px 6px;
+  font-size: 12px;
+  opacity: .75;
+  color: var(--textMuted, #666);
+  background: linear-gradient(to top, var(--sidebarBg), color-mix(in srgb, var(--sidebarBg) 0%, #0000) 90%);
+}
+@media (prefers-color-scheme: dark){
+  .sidebar .ls-usage{ color: #bbb; }
+}
+
+/* divider for ls-usage */
+.sidebar .ls-usage{ border-top: 1px solid rgba(0,0,0,.07); }
+@media (prefers-color-scheme: dark){
+  .sidebar .ls-usage{ border-top-color: rgba(255,255,255,.08); }
+}
+
+
+
+/* === v17.3 — Sidebar custom scrollbar (dark-aware) === */
+:root{
+  --sb-track: #f2f4fa;
+  --sb-thumb: #c7cce0;
+  --sb-thumb-hover: #b0b7d3;
+  --sb-thumb-active: #9aa3c7;
+  --sb-corner: transparent;
+  --sb-width: 10px;
+  --sb-radius: 8px;
+}
+:root[data-theme='dark'], html.dark, body.dark, body[data-theme*="dark"], body.theme-dark{
+  --sb-track: #0f1424;
+  --sb-thumb: #2b3350;
+  --sb-thumb-hover: #3b4566;
+  --sb-thumb-active: #4a5683;
+}
+.sidebar{
+  scrollbar-width: thin;
+  scrollbar-color: var(--sb-thumb) var(--sb-track);
+}
+.sidebar::-webkit-scrollbar{ width: var(--sb-width); height: var(--sb-width); }
+.sidebar::-webkit-scrollbar-track{ background: var(--sb-track); border-radius: var(--sb-radius); }
+.sidebar::-webkit-scrollbar-thumb{ background: var(--sb-thumb); border-radius: var(--sb-radius); border: 2px solid var(--sb-track); }
+.sidebar::-webkit-scrollbar-thumb:hover{ background: var(--sb-thumb-hover); }
+.sidebar::-webkit-scrollbar-thumb:active{ background: var(--sb-thumb-active); }
+.sidebar::-webkit-scrollbar-corner{ background: var(--sb-corner); }
+
+
+
+/* === v17.4 — Remove unwanted page scroll & keep internal areas scrollable === */
+html, body{ height:100%; margin:0; overflow:hidden; }
+.layout{ height:100dvh; overflow:hidden; }
+.content{ height:100%; overflow:auto; overscroll-behavior:contain; }
+.bottomBar{ contain:paint; will-change:transform; }
+
+
+
+/* === v17.5 — Global & textarea scrollbars unified with sidebar === */
+html, body, .content{ scrollbar-width:thin; scrollbar-color:var(--sb-thumb) var(--sb-track); }
+html::-webkit-scrollbar, body::-webkit-scrollbar, .content::-webkit-scrollbar{ width:var(--sb-width); height:var(--sb-width); }
+html::-webkit-scrollbar-track, body::-webkit-scrollbar-track, .content::-webkit-scrollbar-track{ background:var(--sb-track); border-radius:var(--sb-radius); }
+html::-webkit-scrollbar-thumb, body::-webkit-scrollbar-thumb, .content::-webkit-scrollbar-thumb{ background:var(--sb-thumb); border-radius:var(--sb-radius); border:2px solid var(--sb-track); }
+html::-webkit-scrollbar-thumb:hover, body::-webkit-scrollbar-thumb:hover, .content::-webkit-scrollbar-thumb:hover{ background:var(--sb-thumb-hover); }
+html::-webkit-scrollbar-thumb:active, body::-webkit-scrollbar-thumb:active, .content::-webkit-scrollbar-thumb:active{ background:var(--sb-thumb-active); }
+html::-webkit-scrollbar-corner, body::-webkit-scrollbar-corner, .content::-webkit-scrollbar-corner{ background:var(--sb-corner); }
+
+textarea, .resultArea, .dock textarea, .bottomBar textarea, .textarea-output{
+  scrollbar-width:thin; scrollbar-color:var(--sb-thumb) var(--sb-track);
+}
+textarea::-webkit-scrollbar{ width:var(--sb-width); height:var(--sb-width); }
+textarea::-webkit-scrollbar-track{ background:var(--sb-track); border-radius:var(--sb-radius); }
+textarea::-webkit-scrollbar-thumb{ background:var(--sb-thumb); border-radius:var(--sb-radius); border:2px solid var(--sb-track); }
+textarea::-webkit-scrollbar-thumb:hover{ background:var(--sb-thumb-hover); }
+textarea::-webkit-scrollbar-thumb:active{ background:var(--sb-thumb-active); }
+textarea::-webkit-scrollbar-corner{ background:var(--sb-corner); }
+
+
+
+/* === v17.6 — Admin: zawężenie pola „Domyślna wartość” w dolnym oknie === */
+.admin .bottomBar .defaults-editor textarea,
+.admin .bottomBar textarea[name="defaultValue"],
+.admin .bottomBar .defValueInput{
+  width: clamp(260px, 36vw, 420px);
+  max-width: 100%;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.admin .bottomBar .defaults-row,
+.admin .bottomBar .row-default{
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}

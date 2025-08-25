@@ -1,0 +1,151 @@
+/* --- Sidebar tidy layout (same as wcześniej) --- */
+:root{ --sidebar-width: 280px; }
+.sidebar{ width: var(--sidebar-width); }
+.sidebar .s-cat-list{ display:flex; flex-direction:column; gap:10px; }
+.sidebar .s-cat{ background: var(--panel, rgba(0,0,0,0.04)); border-radius:14px; padding:6px; }
+.sidebar .s-cat-head{ display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px; cursor:pointer; user-select:none; }
+.sidebar .s-cat-head .badge{ margin-left:auto; font-size:12px; opacity:.7; }
+.sidebar .s-cat .chev{ margin-left:6px; opacity:.7; }
+.sidebar .s-list{ display:flex; flex-direction:column; gap:6px; padding:6px 2px 2px; }
+.sidebar .s-cat.closed .s-list{ display:none; }
+.sidebar .s-item{ display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:8px 10px; border-radius:10px; border:1px solid transparent; background: var(--card, rgba(255,255,255,0.6)); }
+.sidebar .s-item:hover{ border-color: var(--hairline, rgba(0,0,0,.12)); background: var(--cardHover, rgba(255,255,255,0.85)); }
+.sidebar .s-item .s-item-title{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sidebar .s-item.danger{ background: rgba(255,0,0,0.06); }
+.sidebar .s-item.danger:hover{ background: rgba(255,0,0,0.12); }
+.sidebar .s-subtitle{ margin:8px 6px 2px; font-size:12px; opacity:.7; }
+
+/* Autosave centered, green when ON */
+.autosave-block{ margin:14px 6px; padding:10px; display:flex; flex-direction:column; align-items:center; gap:8px; border-top:1px dashed var(--hairline, rgba(0,0,0,.15)); }
+.toggle{ position:relative; width:64px; height:28px; border-radius:14px; background:#ccc; border:none; cursor:pointer; }
+.toggle .knob{ position:absolute; top:3px; left:3px; width:22px; height:22px; background:#fff; border-radius:50%; transition:transform .2s ease; }
+.toggle.on{ background:#22c55e; }
+.toggle.on .knob{ transform: translateX(36px); }
+.toggle .label{ position:absolute; right:8px; top:4px; font-size:12px; color:#fff; }
+
+/* --- Result dock polished (narrower + fully hidden when closed) --- */
+.result-dock{
+  position:fixed;
+  left: calc(var(--sidebar-width) + 16px);
+  right: 16px;
+  bottom:0;
+  z-index:40;
+  border-top:1px solid var(--hairline, rgba(0,0,0,.12));
+  background: var(--dockBg, rgba(250,250,250,.95));
+  backdrop-filter: blur(6px);
+  box-shadow: 0 -12px 30px rgba(0,0,0,.12);
+  transform: translateY(0);
+  transition: transform .25s ease;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+}
+.result-dock .dock-head{ height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 12px; font-weight:600; }
+.result-dock .dock-body{ padding:12px; max-height: 38vh; overflow:auto; }
+.result-dock.closed{ transform: translateY(100%); } /* całkiem poza ekran, zostaje tylko FAB */
+.dock-toggle{ border:1px solid var(--hairline, rgba(0,0,0,.12)); border-radius:8px; padding:4px 8px; }
+.dock-fab{ position:fixed; right:16px; bottom:16px; z-index:41; border-radius:999px; padding:10px 14px;
+  background: var(--card, #fff); border:1px solid var(--hairline, rgba(0,0,0,.12)); box-shadow: 0 6px 24px rgba(0,0,0,.12); }
+
+
+/* --- Combine tiles (multi) adopt button theme --- */
+.combine-tiles{ display:flex; gap:8px; overflow-x:auto; padding:4px 0; align-items:center; }
+.combine-tile{
+  background: color-mix(in srgb, var(--btnBg) 85%, var(--card) 15%);
+  border: 1px solid color-mix(in srgb, var(--btnBorder) 85%, var(--btnBg) 15%);
+  color: var(--btnText) !important;
+  cursor: default;
+  display:inline-flex; align-items:center; gap:8px;
+  border-radius: 10px;
+  padding: 6px 10px;
+  user-select:none;
+  cursor: grab;
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .08s ease;
+}
+.combine-tile:active{ cursor: grabbing; transform: scale(0.98); }
+.combine-tile:hover{ cursor: grab; }
+/* Drag hint */
+.combine-tile.drop-left{ box-shadow: inset 3px 0 0 var(--accent); }
+.combine-tile.drop-right{ box-shadow: inset -3px 0 0 var(--accent); }
+
+/* --- Dock panel theming override (use app theme) --- */
+.dock .dock-panel{
+  border-color: var(--border) !important;
+  background: color-mix(in srgb, var(--card) 92%, #0000) !important;
+}
+
+/* --- Dock textarea theming override --- */
+.dock textarea{
+  border-color: var(--border) !important;
+  background: var(--inputBg) !important;
+  color: var(--inputText) !important;
+}
+.dock textarea:focus{
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* --- Strong dock panel override to follow theme exactly --- */
+.dock .dock-panel{
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 10px 24px rgba(0,0,0,.30) !important;
+}
+body[data-theme*="dark"] .dock .dock-panel,
+body[class*="theme-dark"] .dock .dock-panel{
+  background: color-mix(in srgb, var(--card) 96%, #0000) !important;
+  border-color: color-mix(in srgb, var(--border) 80%, var(--card) 20%) !important;
+  box-shadow: 0 10px 30px rgba(0,0,0,.50) !important;
+}
+
+/* --- Ensure readable text on combine tiles --- */
+.combine-tile{ }
+.combine-tile-title{ color: inherit !important; }
+
+/* === Theme overrides (loaded last) === */
+
+/* Dock container strictly follows theme */
+.dock{
+  background: var(--card) !important;
+  border-top: 1px solid var(--border) !important;
+  box-shadow: 0 10px 24px rgba(0,0,0,.20) !important;
+}
+.dock .dock-head{ background: color-mix(in srgb, var(--card) 96%, #0000) !important; }
+.dock .dock-body{ background: transparent !important; }
+.result-dock{ background: color-mix(in srgb, var(--card) 94%, #0000) !important; border: 1px solid var(--border) !important; }
+.result-dock textarea{ background: var(--inputBg) !important; color: var(--inputText) !important; border: 1px solid var(--border) !important; }
+
+/* Combine tiles default = dark button, hover only cursor */
+.combine-tile{
+  background: var(--btnBg) !important;
+  color: var(--btnText) !important;
+  border: 1px solid var(--btnBorder) !important;
+}
+.combine-tile:hover{ cursor: grab; }
+.combine-tile:active{ cursor: grabbing; transform: scale(0.985); }
+.combine-tile-title{ color: inherit !important; }
+
+/* === Dock: blend into page background, no light frame === */
+.dock{
+  background: var(--bg) !important;
+  border-top: 0 !important;
+  box-shadow: none !important;
+}
+.dock .dock-head,
+.dock .dock-body,
+.dock .dock-panel{
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+/* Keep result area readable with its own styling */
+.result-dock{
+  background: transparent !important; /* wrapper transparent */
+  border: 0 !important;
+}
+.result-dock textarea{
+  background: var(--inputBg) !important;
+  color: var(--inputText) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+}
+
