@@ -43,7 +43,7 @@ const byCat = new Map();
             <div className="catTitle">{group.cat.name}</div>
             <div className="ifaceGrid">
               {group.items.map(it => (
-                <Link key={it.id} className="ifaceCard" style={usedIfaceIds.has(it.id) ? { boxShadow: 'inset 0 0 0 2px #2ecc71', borderRadius: 12 } : undefined} to={`/iface/${it.id}`}>
+                <Link key={it.id} className="ifaceCard" data-name={it.name} data-type={(it.type || it.typeCode || "")} style={usedIfaceIds.has(it.id) ? { boxShadow: 'inset 0 0 0 2px #2ecc71', borderRadius: 12 } : undefined} to={`/iface/${it.id}`}>
                   <div className="ifaceTitle">
                     {/* subtle note icon */}
                     <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
