@@ -141,7 +141,7 @@ const usedIds = useMemo(() => {
     const prioritized = (combineOrder || []).filter(id => withIncluded.includes(id));
     const rest = withIncluded.filter(id => !prioritized.includes(id));
     return prioritized.concat(rest);
-  }, [combineOrder, cfg?.interfaces]);
+  }, [combineOrder, cfg?.interfaces, genTabsVersion, valsMap]);
   // === Section usage helpers (icon + counter in Introduction) ===
   const usedCountForSection = (itf, sIx) => {
     if (!itf || sIx == null) return 0;
@@ -299,7 +299,19 @@ const usedIds = useMemo(() => {
         } catch {}
       }catch(e){ console.warn('autosave failed', e); }
     }, 400);
-    return () => clearTimeout(timer);
+    
+  // Recompute when localStorage tabs change (defensive for cross-tab/async updates)
+  useEffect(() => {
+    const h = (e) => {
+      try {
+        const k = e && e.key ? String(e.key) : '';
+        if (k.startsWith('tcf_genTabs_')) bumpGenTabs();
+      } catch {}
+    };
+    window.addEventListener('storage', h);
+    return () => window.removeEventListener('storage', h);
+  }, []);
+return () => clearTimeout(timer);
   }, [iface && JSON.stringify({ c: iface?.sectionColors, inc: iface?.includedSections }), values]);
 
   // Ensure arrays exist and, if needed, persist back to cfg
