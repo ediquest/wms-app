@@ -65,7 +65,13 @@ export default function GeneratedTabs({
   // ---- button handlers ----
   const onGenerate = React.useCallback(() => {
     const secIdx = activeSec;
-    const secNo = (iface.sectionNumbers || [])[secIdx] ?? secIdx;
+    const secNo = (() => {
+  const raw = (((iface.sections?.[secIdx] || '').match(/\b(\d{3})\b/) || [])[1])
+           ?? iface.sectionNumbers?.[secIdx]
+           ?? String(secIdx * 10);
+  const s = String(raw ?? '');
+  return s.padStart(3, '0').slice(-3);
+})();
     const snapshot = takeSnapshot(secIdx);
     const id = `${Date.now().toString(36)}_${secNo}_${Math.random().toString(36).slice(2,7)}`;
     const next = [...tabs, { id, secIdx, secNo, snapshot }];
