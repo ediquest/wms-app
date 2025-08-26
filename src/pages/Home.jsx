@@ -136,17 +136,12 @@ const usedIds = useMemo(() => {
         ? itf.includedSections
         : (itf.sections || []).map(() => false);
       for (let s = 1; s < (itf.sections?.length || 1); s++) if (incl[s]) return true;
-      const vals = valsMap[itf.id] || [];
-      for (let s = 1; s < (itf.sections?.length || 1); s++) {
-        const idxs = (itf.fieldSections || []).map((sec,i)=>sec===s?i:-1).filter(i=>i!==-1);
-        if (idxs.some(i => String(vals[i] ?? '').trim() !== '')) return true;
-      }
       return false;
     }).map(i => i.id);
     const prioritized = (combineOrder || []).filter(id => withIncluded.includes(id));
     const rest = withIncluded.filter(id => !prioritized.includes(id));
     return prioritized.concat(rest);
-  }, [combineOrder, cfg?.interfaces, valsMap]);
+  }, [combineOrder, cfg?.interfaces]);
 
 
   // Workspace-aware keys for persistence
@@ -401,11 +396,7 @@ const usedIds = useMemo(() => {
     } catch {}
 
     for (let sIx = 0; sIx < (itf.sections?.length || 0); sIx++) {
-      if (!included[sIx]) {
-        const idxsProbe = (itf.fieldSections || []).map((sec,i)=>sec===sIx?i:-1).filter(i=>i!==-1);
-        const hasData = idxsProbe.some(i => String((vals[i] ?? '')).trim() !== '');
-        if (!hasData) continue;
-      }
+      if (!included[sIx]) continue;
       const idxs = idxsFor(itf, sIx);
       if (!idxs.length) continue;
 
@@ -487,12 +478,7 @@ const usedIds = useMemo(() => {
         ? itf.includedSections
         : (itf.sections || []).map(() => false);
       for (let sIx = 0; sIx < (itf.sections?.length || 0); sIx++) {
-        if (!included[sIx]) {
-          const idxsProbe = idxsFor(itf, sIx);
-          if (!idxsProbe.length) continue;
-          const hasData = idxsProbe.some(i => String((vals[i] ?? '')).trim() !== '');
-          if (!hasData) continue;
-        }
+        if (!included[sIx]) continue;
         const idxs = idxsFor(itf, sIx);
         if (!idxs.length) continue;
         const rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
@@ -659,26 +645,7 @@ const usedIds = useMemo(() => {
     setCfg(nextCfg); saveConfig(nextCfg);
   };
 
-  
-  // Compute how many times a given section is used in the resulting output
-  const usedCountForSection = (itf, sIx) => {
-    if (!itf || !Array.isArray(itf.sections) || sIx == null) return 0;
-    const idxs = (itf.fieldSections || []).map((sec, i) => (sec === sIx ? i : -1)).filter(i => i !== -1);
-    if (!idxs.length) return 0;
-    try {
-      const gen = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || [];
-      if (Array.isArray(gen) && gen.length > 0) {
-        return gen.filter(t => t && Number(t.secIdx) === Number(sIx)).length;
-      }
-    } catch {}
-    const vals = valsMap[itf.id] || [];
-    if (idxs.some(i => String(vals[i] ?? '').trim() !== '')) return 1;
-    const included = (Array.isArray(itf.includedSections) && itf.includedSections.length === (itf.sections?.length || 0))
-      ? itf.includedSections
-      : (itf.sections || []).map(() => false);
-    return included[sIx] ? 1 : 0;
-  };
-// Color pick & persist
+  // Color pick & persist
   const onPickColor = (secIdx, color) => {
     const next = { ...iface };
     next.sectionColors = Array.isArray(next.sectionColors) && next.sectionColors.length === next.sections.length
@@ -725,12 +692,7 @@ const usedIds = useMemo(() => {
   };
   const clearForm = () => {
   if (!iface) return;
-  // Confirm before clearing everything (fields + subsections)
-  const ok = (typeof window !== 'undefined' && window.confirm)
-    ? window.confirm(t('confirmClearAll') || 'Na pewno wyczyścić pola i wszystkie podsekcje?')
-    : true;
-  if (!ok) return;
-// 1) Clear all field values (existing behavior)
+  // 1) Clear all field values (existing behavior)
   const empties = Array.from({ length: (iface.labels?.length || 0) }, () => '');
   setValues(empties);
   const map = { ...valsMap, [iface.id]: empties };
@@ -753,16 +715,6 @@ const usedIds = useMemo(() => {
     const nextCfg = { ...cfg, interfaces: (cfg?.interfaces || []).map(i => i.id === next.id ? next : i) };
     setCfg(nextCfg);
     saveConfig(nextCfg);
-  // 4) EXTRA: wipe all generated subsections (tabs) for this interface
-  try {
-    const key = 'tcf_genTabs_' + String(iface.id);
-    const activeKey = 'tcf_genTabs_active_' + String(iface.id);
-    try { localStorage.removeItem(key); } catch {}
-    try { localStorage.removeItem(activeKey); } catch {}
-  } catch {}
-  // trigger UI refresh (recompute result + remount tabs)
-  try { bumpGenTabs(); } catch {}
-
   } catch (e) {
     console.warn('clearForm extras failed', e);
   }
@@ -873,13 +825,8 @@ const clearSection = () => {
                         {nm}
                       </td>
                       <td style={{ backgroundColor: iface.sectionColors?.[ix] || 'transparent' }}>
-  {(() => { const c = usedCountForSection(iface, ix); return (
-    <span className="includeCell" style={{display:'inline-flex',alignItems:'center',gap:8}} title={(t('include')+`: ${c}`)}>
-      <span aria-hidden="true" style={{display:'inline-block',width:10,height:10,borderRadius:'50%',background: c>0 ? 'var(--ok, #16a34a)' : 'var(--mutedText, #999)'}}></span>
-      <span className="badge" style={{fontSize:12,opacity:.8}}>{c}</span>
-    </span>
-  ); })()}
-</td>
+                        <input type="checkbox" checked={!!(iface.includedSections?.[ix] ?? false)} onChange={e => toggleInclude(ix, e.target.checked)} />
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -932,7 +879,7 @@ const clearSection = () => {
               </div>
               <div className="actions-split">
                 <div className="actions">
-<GeneratedTabs key={`gt_${String(iface?.id ?? '')}_${genTabsVersion}`}
+<GeneratedTabs
   iface={iface}
   activeSec={activeSec}
   values={values}
@@ -1071,7 +1018,12 @@ const clearSection = () => {
 }}
                         onDragEnd={() => setDragId(null)}
                         title={t('orderInterfaces') || 'Order'}
-                      >
+                      onDoubleClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          try { navigate(`/iface/${id}`); setActiveSec(0); } catch {}
+                        }}
+>
                         <span className="combine-tile-title">{itf.name || id}</span>
                       </div>
                     );
