@@ -110,10 +110,13 @@ React.useEffect(() => {
     const used = new Set();
     const vals = loadValues() || {};
     (cfg.interfaces || []).forEach(it => {
-      const arr = vals[it.id] || [];
-      const hasVal = Array.isArray(arr) && arr.some(s => textify(s).trim().length > 0);
+      const id = it.id;
+      const arr = vals[id] || [];
+      const hasVal = Array.isArray(arr) && arr.some(v => String(v ?? '').trim() !== '');
+      let hasGen = false;
+      try { const g = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(id)) || '[]') || []; hasGen = Array.isArray(g) && g.length > 0; } catch {}
       const includes = Array.isArray(it.includedSections) && it.includedSections.some(Boolean);
-      if (hasVal || includes) used.add(it.id);
+      if (hasVal || hasGen || includes) used.add(id);
     });
     return used;
   }, [cfg, valTick]);

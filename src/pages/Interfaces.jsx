@@ -18,17 +18,21 @@ export default function Interfaces(){
     const onVals = () => setValTick(v => v + 1);
     window.addEventListener('tcf-values-changed', onVals);
     window.addEventListener('tcf-config-changed', onVals);
-    return () => { window.removeEventListener('tcf-values-changed', onVals); window.removeEventListener('tcf-config-changed', onVals); };
+    window.addEventListener('storage', onVals);
+    return () => { window.removeEventListener('tcf-values-changed', onVals); window.removeEventListener('tcf-config-changed', onVals); window.removeEventListener('storage', onVals); };
   }, []);
 
   const usedIfaceIds = React.useMemo(() => {
     const used = new Set();
     const vals = loadValues() || {};
     (cfg.interfaces || []).forEach(it => {
-      const arr = vals[it.id] || [];
-      const hasVal = Array.isArray(arr) && arr.some(s => textify(s).trim().length > 0);
+      const id = it.id;
+      const arr = vals[id] || [];
+      const hasVal = Array.isArray(arr) && arr.some(v => String(v ?? '').trim() !== '');
+      let hasGen = false;
+      try { const g = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(id)) || '[]') || []; hasGen = Array.isArray(g) && g.length > 0; } catch {}
       const includes = Array.isArray(it.includedSections) && it.includedSections.some(Boolean);
-      if (hasVal || includes) used.add(it.id);
+      if (hasVal || hasGen || includes) used.add(id);
     });
     return used;
   }, [cfg, valTick]);
