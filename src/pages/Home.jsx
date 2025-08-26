@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState , useRef} from 'react';
+import React, { useEffect, useMemo, useState , useRef, useCallback} from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { loadConfig, saveConfig, loadValues, saveValues, padToLen, timestamp, loadProjects, saveProjects, snapshotProject, applyProject } from '../utils.js';
 import { t } from '../i18n.js';
@@ -14,9 +14,10 @@ export default function Home() {
   // CSV
   const [csvMode, setCsvMode] = useState(() => { try { return localStorage.getItem('tcf_csv_mode') === '1'; } catch { return false; } });
   const [csvSep, setCsvSep] = useState(() => { try { return localStorage.getItem('tcf_csv_sep') || ';'; } catch { return ';'; } });
+
   // Generated tabs change counter (textarea auto-refresh)
   const [genTabsVersion, setGenTabsVersion] = useState(0);
-  const bumpGenTabs = () => setGenTabsVersion(v => v + 1);
+  const bumpGenTabs = React.useCallback(() => setGenTabsVersion(v => v + 1), []);
   useEffect(() => { try { localStorage.setItem('tcf_csv_mode', csvMode ? '1' : '0'); } catch {} }, [csvMode]);
   useEffect(() => { try { localStorage.setItem('tcf_csv_sep', csvSep || ';'); } catch {} }, [csvSep]);
 
@@ -326,18 +327,8 @@ const usedIds = useMemo(() => {
       return gen.map(tab => {
         const sIx = tab.secIdx;
         const idxs = (iface.fieldSections || []).map((s,i)=>s===sIx?i:-1).filter(i=>i!==-1);
-        let activeId = null; try { activeId = localStorage.getItem('tcf_genTabs_active_' + String(iface.id)) || null; } catch {}
-const snap = Array.isArray(tab.snapshot) ? tab.snapshot : values;
-let rowVals;
-if (tab.id && activeId && tab.id === activeId) {
-  rowVals = idxs.map(i => String((values[i] ?? '')).trim());
-} else if (snap && typeof snap[0] === 'object' && snap[0] && snap[0].i !== undefined) {
-  const map = new Map(snap.map(p => [p.i, p.v]));
-  rowVals = idxs.map(i => String((map.has(i) ? map.get(i) : (values[i] ?? ''))).trim());
-} else {
-  rowVals = idxs.map(i => String((snap[i] ?? '')).trim());
-}
-return idxs.map((i, k) => padToLen(rowVals[k], getLen(i))).join('');
+        const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
+        return idxs.map(i => padToLen(snapMap.has(i) ? snapMap.get(i) : (values[i] ?? ''), getLen(i))).join('');
       });
     }
     const included = (Array.isArray(iface.includedSections) && iface.includedSections.length === iface.sections.length)
@@ -359,53 +350,20 @@ return idxs.map((i, k) => padToLen(rowVals[k], getLen(i))).join('');
   let seq = 1; // Global sequence counter (start from 1)
 
   const buildForOne = (itf, vals) => {
-    
-    const lines = [];
-
-    // Prefer generated tabs (per-interface), if any
-    let gen = [];
-    try { gen = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || []; } catch {}
-    if (Array.isArray(gen) && gen.length > 0) {
-      let activeId = null; try { activeId = localStorage.getItem('tcf_genTabs_active_' + String(itf.id)) || null; } catch {}
-      for (const tab of gen) {
-        const sIx = tab.secIdx;
-        const idxs = (itf.fieldSections || []).map((sec,i)=>sec===sIx?i:-1).filter(i=>i!==-1);
-        if (!idxs.length) continue;
-        const snap = Array.isArray(tab.snapshot) ? tab.snapshot : vals;
-        let rowVals;
-        if (tab.id && activeId && tab.id === activeId) {
-          rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
-        } else if (snap && typeof snap[0] === 'object' && snap[0] && snap[0].i !== undefined) {
-          const map = new Map(snap.map(p => [p.i, p.v]));
-          rowVals = idxs.map(i => String((map.has(i) ? map.get(i) : (vals[i] ?? ''))).trim());
-        } else {
-          rowVals = idxs.map(i => String((snap[i] ?? '')).trim());
-        }
-        const seqIdx = findSeqIndex(itf, sIx);
-        if (seqIdx != null) {
-          const posInRow = idxs.indexOf(seqIdx);
-          if (posInRow !== -1) {
-            const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
-            const seqStr = String(seq).padStart(fieldLen, '0').slice(-fieldLen);
-            rowVals[posInRow] = seqStr;
-          }
-        }
-        const padded = rowVals.map((v, k) => padToLen(v, getLenFor(itf, idxs[k])));
-        lines.push(padded.join(''));
-        seq += 1;
-      }
-      return lines;
-    }
-
-    // Fallback to legacy includedSections if no generated tabs
     const included = (Array.isArray(itf.includedSections) && itf.includedSections.length === itf.sections.length)
       ? itf.includedSections
       : (itf.sections || []).map(() => false);
+
+    const lines = [];
     for (let sIx = 0; sIx < (itf.sections?.length || 0); sIx++) {
       if (!included[sIx]) continue;
-      const idxs = (itf.fieldSections || []).map((sec,i)=>sec===sIx?i:-1).filter(i=>i!==-1);
+      const idxs = idxsFor(itf, sIx);
       if (!idxs.length) continue;
+
+      // raw row values
       const row = idxs.map(i => String((vals[i] ?? '')).trim());
+
+      // overwrite Sequence in this row
       const seqIdx = findSeqIndex(itf, sIx);
       if (seqIdx != null) {
         const posInRow = idxs.indexOf(seqIdx);
@@ -414,12 +372,15 @@ return idxs.map((i, k) => padToLen(rowVals[k], getLen(i))).join('');
           const seqStr = String(seq).padStart(fieldLen, '0').slice(-fieldLen);
           row[posInRow] = seqStr;
         }
-      }
+}
+
+      // padding per field using existing helpers
       const padded = row.map((v, k) => padToLen(v, getLenFor(itf, idxs[k])));
       lines.push(padded.join(''));
+
+      // increment global sequence after pushing line
       seq += 1;
     }
-
     return lines;
   };
 
@@ -451,18 +412,8 @@ return idxs.map((i, k) => padToLen(rowVals[k], getLen(i))).join('');
           const sIx = tab.secIdx;
           const idxs = idxsFor(itf, sIx);
           if (!idxs.length) continue;
-          let activeId = null; try { activeId = localStorage.getItem('tcf_genTabs_active_' + String(itf.id)) || null; } catch {}
-const snap = Array.isArray(tab.snapshot) ? tab.snapshot : vals;
-let rowVals;
-if (tab.id && activeId && tab.id === activeId) {
-  rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
-} else if (snap && typeof snap[0] === 'object' && snap[0] && snap[0].i !== undefined) {
-  const map = new Map(snap.map(p => [p.i, p.v]));
-  rowVals = idxs.map(i => String((map.has(i) ? map.get(i) : (vals[i] ?? ''))).trim());
-} else {
-  rowVals = idxs.map(i => String((snap[i] ?? '')).trim());
-}
-
+          const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
+          const rowVals = idxs.map(i => String((snapMap.has(i) ? snapMap.get(i) : (vals[i] ?? ''))).trim());
           const seqIdx = findSeqIndex(itf, sIx);
           if (seqIdx != null) {
             const posInRow = idxs.indexOf(seqIdx);
@@ -542,18 +493,8 @@ if (tab.id && activeId && tab.id === activeId) {
           const sIx = tab.secIdx;
           const idxs = idxsFor(itf, sIx);
           if (!idxs.length) continue;
-          let activeId = null; try { activeId = localStorage.getItem('tcf_genTabs_active_' + String(itf.id)) || null; } catch {}
-const snap = Array.isArray(tab.snapshot) ? tab.snapshot : vals;
-let rowVals;
-if (tab.id && activeId && tab.id === activeId) {
-  rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
-} else if (snap && typeof snap[0] === 'object' && snap[0] && snap[0].i !== undefined) {
-  const map = new Map(snap.map(p => [p.i, p.v]));
-  rowVals = idxs.map(i => String((map.has(i) ? map.get(i) : (vals[i] ?? ''))).trim());
-} else {
-  rowVals = idxs.map(i => String((snap[i] ?? '')).trim());
-}
-
+          const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
+          const rowVals = idxs.map(i => String((snapMap.has(i) ? snapMap.get(i) : (vals[i] ?? ''))).trim());
           const seqIdx = findSeqIndex(itf, sIx);
           if (seqIdx != null) {
             const posInRow = idxs.indexOf(seqIdx);
@@ -619,7 +560,7 @@ if (tab.id && activeId && tab.id === activeId) {
   // Default: fixed width
   return outLines.join('\n');
 
-}, [combineAll, combineOrder, cfg, valsMap, iface, values, csvMode, csvSep, csvHeader, jsonMode, skipEmpty, jsonMinified, jsonArray, genTabsVersion]);
+}, [combineAll, combineOrder, cfg, valsMap, iface, values, csvMode, csvSep, csvHeader, jsonMode, skipEmpty, jsonMinified, jsonArray]);
 ;
 
   const onChange = (i, v) => {
@@ -898,17 +839,24 @@ const clearSection = () => {
               </div>
               <div className="actions-split">
                 <div className="actions">
-                  <GeneratedTabs
-                    iface={iface}
-                    activeSec={activeSec}
-                    values={values}
-                    valsMap={valsMap}
-                    setValues={setValues}
-                    setValsMap={setValsMap}
-                    onSwitchSection={(ix)=>setActiveSec(ix)}
-                   onChange={bumpGenTabs}>
+<GeneratedTabs
+  iface={iface}
+  activeSec={activeSec}
+  values={values}
+  valsMap={valsMap}
+  setValues={setValues}
+  setValsMap={setValsMap}
+  onSwitchSection={setActiveSec}
+  onChange={bumpGenTabs}
+>
   {({ onGenerate }) => (
-    <button onClick={onGenerate}>Generuj</button>
+    <button
+      type="button"
+      className="btn"
+      onClick={onGenerate}
+    >
+      Generuj
+    </button>
   )}
 </GeneratedTabs>
                 </div>
