@@ -12,8 +12,20 @@ export default function Home() {
   const navigate = useNavigate();
   // ===== Export modes (CSV / JSON) =====
   // CSV
-  const [csvMode, setCsvMode] = useState(() => { try { return localStorage.getItem('tcf_csv_mode') === '1'; } catch { return false; } });
-  const [csvSep, setCsvSep] = useState(() => { try { return localStorage.getItem('tcf_csv_sep') || ';'; } catch { return ';'; } });
+  const [csvMode, setCsvMode] = useState(() => {
+    try { return localStorage.getItem('tcf_csv_mode') === '1'; }
+    catch { return false; }
+  });
+
+  const [csvSep, setCsvSep] = useState(() => {
+    try { return localStorage.getItem('tcf_csv_sep') || ';'; }
+    catch { return ';'; }
+  });
+
+  // Generated tabs change counter (textarea auto-refresh)
+  const [genTabsVersion, setGenTabsVersion] = useState(0);
+  const bumpGenTabs = () => setGenTabsVersion(v => v + 1);
+
   useEffect(() => { try { localStorage.setItem('tcf_csv_mode', csvMode ? '1' : '0'); } catch {} }, [csvMode]);
   useEffect(() => { try { localStorage.setItem('tcf_csv_sep', csvSep || ';'); } catch {} }, [csvSep]);
 
