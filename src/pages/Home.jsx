@@ -732,39 +732,51 @@ return () => clearTimeout(timer);
     document.body.appendChild(a); a.click();
     setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1500);
   };
-  const clearForm = () => {
+  
+const clearForm = () => {
   if (!iface) return;
-  // 1) Clear all field values (existing behavior)
+  // Confirm
+  const ok = (typeof window !== 'undefined' && window.confirm)
+    ? window.confirm(t('confirmClearAll') || 'Na pewno wyczyścić pola, podsekcje i kolory?')
+    : true;
+  if (!ok) return;
+
+  // 1) Clear all field values for this interface
   const empties = Array.from({ length: (iface.labels?.length || 0) }, () => '');
   setValues(empties);
   const map = { ...valsMap, [iface.id]: empties };
-  setValsMap(map); 
-  saveValues(map);
+  setValsMap(map);
+  saveValues(map); // fires tcf-values-changed
 
-  // 2) EXTRA: uncheck all section checkboxes (Introduction table)
+  // 2) Clear includedSections (legacy) and all section colors
   try {
-    const next = { ...iface };
-    next.includedSections = Array.isArray(next.includedSections) && next.includedSections.length === (next.sections?.length || 0)
-      ? next.includedSections.map(() => false)
-      : (next.sections || []).map(() => false);
-
-    // 3) EXTRA: clear colors for Introduction & all section tabs
-    next.sectionColors = Array.isArray(next.sectionColors) && next.sectionColors.length === (next.sections?.length || 0)
-      ? next.sectionColors.map(() => '')
-      : (next.sections || []).map(() => '');
-
-    setIface(next);
-    const nextCfg = { ...cfg, interfaces: (cfg?.interfaces || []).map(i => i.id === next.id ? next : i) };
+    const fresh = loadConfig();
+    const all = Array.isArray(fresh.interfaces) ? fresh.interfaces : [];
+    const updated = all.map(it => {
+      if (it.id !== iface.id) return it;
+      const included = (it.sections || []).map(() => false);
+      const colors = (it.sections || []).map(() => '');
+      return { ...it, includedSections: included, sectionColors: colors };
+    });
+    const nextCfg = { ...fresh, interfaces: updated };
     setCfg(nextCfg);
-    saveConfig(nextCfg);
-  } catch (e) {
-    console.warn('clearForm extras failed', e);
-  }
+    saveConfig(nextCfg); // fires tcf-config-changed
+  } catch (e) { console.warn('clearForm: cfg update failed', e); }
 
-  // 4) Reset active section & UI helpers
+  // 3) Remove all generated subsections (tabs) for this interface
+  try {
+    const key = 'tcf_genTabs_' + String(iface.id);
+    const akey = 'tcf_genTabs_active_' + String(iface.id);
+    try { localStorage.removeItem(key); } catch {}
+    try { localStorage.removeItem(akey); } catch {}
+    try { bumpGenTabs(); } catch {}
+  } catch (e) { console.warn('clearForm: tabs wipe failed', e); }
+
+  // 4) Reset UI anchors
   setActiveSec(0);
   setColorPicker(null);
 };
+
 
 const clearSection = () => {
     if (!iface) return;
