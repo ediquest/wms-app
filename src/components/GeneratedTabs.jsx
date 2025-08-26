@@ -179,9 +179,16 @@ export default function GeneratedTabs({
           );
         })}
         {/* + dodaj */}
-        <div className="tab-bottom tab-bottom--add">
-          <button className="tab" onClick={addTabForCurrent} title="Dodaj podsekcję">+</button>
-        </div>
+<div className="tab-bottom tab-bottom--add">
+  <button
+    className="tab"
+    onClick={addTabForCurrent}
+    title="Dodaj podsekcję"
+  >
+    + Dodaj sekcje
+  </button>
+</div>
+
       </div>
 
       {activeLabel ? (

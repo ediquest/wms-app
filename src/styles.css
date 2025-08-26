@@ -853,3 +853,47 @@ textarea::-webkit-scrollbar-corner{ background:var(--sb-corner); }
 /* Badge dot for sections with generated pods */
 .badge-dot{ display:inline-block; width:10px; height:10px; border-radius:999px; background:var(--accent); border:1px solid var(--border); }
 .badge-dot.muted{ background:transparent; border:1px dashed var(--border); }
+
+/* Bottom generated tabs — remove inner pill border */
+.tabs-bottom .tab {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 6px 10px; /* dopasuj do gustu */
+}
+
+/* Dłuższa etykieta przy plusie ma się mieścić bez ściskania */
+.tab-bottom { min-width: auto; }
+
+/* Możesz też lekko “wzmocnić” przycisk dodawania */
+.tab-bottom--add .tab { font-weight: 700; }
+
+.tabs-bottom .tab-bottom{
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.tabs-bottom .tab-bottom:hover{
+  background: color-mix(in srgb, var(--accent) 8%, var(--card) 92%);
+  border-top-color: var(--accent);
+  box-shadow: 0 1px 0 rgba(0,0,0,.06);
+}
+
+@supports(selector(:has(*))){
+  .tabs-bottom .tab-bottom:has(.close:hover){
+    background: color-mix(in srgb, #ff3b30 10%, var(--card) 90%);
+    border-top-color: #ff3b30;
+  }
+}
+
+/* usuń cienką linię nad zakładkami */
+.tabs-bottom{
+  border-top: 0 !important;
+  /* opcjonalnie wyrównaj odstęp po usunięciu ramki: */
+  padding-top: 0;      /* lub np. 4px, jeśli chcesz oddech */
+  margin-top: 0;
+}
+
+/* gdyby linia była pseudo-elementem frameworka */
+.tabs-bottom::before{
+  content: none !important;
+}
