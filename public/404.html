@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Redirecting…</title>
+<script>
+  /* SPA redirect for GitHub Pages (project pages) */
+  (function(l) {
+    var segmentCount = 1; // dla "username.github.io/REPO/…" ustaw 1
+    var root = l.protocol + '//' + l.hostname + (l.port ? ':'+l.port : '') +
+               l.pathname.split('/').slice(0, 1+segmentCount).join('/') + '/';
+    var rest = l.pathname.split('/').slice(1+segmentCount).join('/');
+    l.replace(root + '?p=' + encodeURIComponent(rest + l.search + l.hash));
+  })(window.location);
+</script>
