@@ -3,9 +3,10 @@ import React, { useEffect, useMemo, useState, useRef, useCallback } from "react"
 /**
  * GeneratedTabs — dolne zakładki
  * - Auto: tworzy podsekcję gdy użytkownik zaczyna wypełniać pola w bieżącej sekcji
- * - „+” na końcu dodaje nową podsekcję dla aktualnie oglądanej sekcji
- * - Snapshot wartości per-podsekcja (trwałość w localStorage)
+ * - „+ Dodaj sekcje” na końcu dodaje nową podsekcję dla aktualnie oglądanej sekcji
+ * - Snapshot wartości per-podsekcja (localStorage)
  * - Natychmiastowe odświeżenie textarea przez onChange()
+ * - Drag & Drop: zmiana kolejności zakładek z delikatnym rozsunięciem
  */
 export default function GeneratedTabs({
   iface,
@@ -20,14 +21,11 @@ export default function GeneratedTabs({
   const key = `tcf_genTabs_${String(iface?.id ?? "")}`;
   const activeKey = `tcf_genTabs_active_${String(iface?.id ?? "")}`;
 
-  const readTabs = () => {
-    try { return JSON.parse(localStorage.getItem(key) || "[]") || []; } catch { return []; }
-  };
+  const readTabs = () => { try { return JSON.parse(localStorage.getItem(key) || "[]") || []; } catch { return []; } };
   const writeTabs = (arr) => { try { localStorage.setItem(key, JSON.stringify(arr)); } catch {} };
 
   const [tabs, setTabs] = useState(readTabs);
   const [activeId, setActiveId] = useState(() => { try { return localStorage.getItem(activeKey) || null; } catch { return null; } });
-
   useEffect(() => { setTabs(readTabs()); }, [key]);
 
   const idxsFor = useCallback((itf, sIx) => {
@@ -60,7 +58,7 @@ export default function GeneratedTabs({
     if (typeof setValues === "function") setValues(norm);
   };
 
-  // Zapisuje bieżące 'values' do aktywnej zakładki (jeśli się zmieniły)
+  // Zapis bieżących wartości do aktywnej zakładki, jeśli się zmieniły
   const persistActiveSnapshot = useCallback((vals) => {
     try {
       const id = (typeof window !== "undefined") ? (localStorage.getItem(activeKey) || activeId) : activeId;
@@ -79,7 +77,7 @@ export default function GeneratedTabs({
     } catch { return false; }
   }, [activeId, tabs, key]);
 
-  // Automatycznie tworzy zakładkę po pierwszym wpisaniu w polu aktualnej sekcji
+  // Auto-utworzenie pierwszej zakładki po wpisaniu w bieżącej sekcji
   const autoCreateFromValues = useCallback(() => {
     const secIdx = activeSec;
     const idxs = idxsFor(iface, secIdx);
@@ -89,7 +87,6 @@ export default function GeneratedTabs({
     const activeIdLS = (typeof window !== "undefined") ? (localStorage.getItem(activeKey) || activeId) : activeId;
     const activeTab = tabs.find(t => t.id === activeIdLS);
     if (activeTab && activeTab.secIdx === secIdx) return false;
-    // create
     const secNo = secNoFor(secIdx);
     const id = Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
     const snapshot = Array.isArray(values) ? [...values] : [];
@@ -102,7 +99,7 @@ export default function GeneratedTabs({
     return true;
   }, [values, activeSec, iface, tabs, activeId, key, onChange]);
 
-  // „+” – dodaj nową zakładkę dla aktualnej sekcji
+  // Ręczne dodanie nowej podsekcji dla bieżącej sekcji (przycisk +)
   const addTabForCurrent = useCallback(() => {
     const secIdx = activeSec;
     const secNo = secNoFor(secIdx);
@@ -116,7 +113,7 @@ export default function GeneratedTabs({
     if (typeof onChange === "function") onChange();
   }, [activeSec, values, tabs, key, onChange]);
 
-  // Otwieranie zakładki (zapamiętaj bieżącą, przełącz sekcję i przywróć dane)
+  // Otwieranie / usuwanie
   const onOpen = useCallback((tab) => {
     try { persistActiveSnapshot(values); } catch {}
     if (typeof onSwitchSection === "function") onSwitchSection(tab.secIdx);
@@ -126,7 +123,6 @@ export default function GeneratedTabs({
     if (typeof onChange === "function") onChange();
   }, [persistActiveSnapshot, values, onSwitchSection, onChange]);
 
-  // Usuwanie zakładki
   const onRemove = useCallback((tab) => {
     const next = tabs.filter(t => t.id !== tab.id);
     setTabs(next);
@@ -145,8 +141,8 @@ export default function GeneratedTabs({
     const s = JSON.stringify(values || []);
     if (s !== prevValsStrRef.current) {
       prevValsStrRef.current = s;
-      autoCreateFromValues();                 // utwórz pierwszą zakładkę jeśli trzeba
-      const changed = persistActiveSnapshot(values); // zapisz do aktywnej
+      autoCreateFromValues();
+      const changed = persistActiveSnapshot(values);
       if (changed && typeof onChange === "function") onChange();
     }
   }, [values, autoCreateFromValues, persistActiveSnapshot, onChange]);
@@ -163,32 +159,101 @@ export default function GeneratedTabs({
 
   const activeLabel = useMemo(() => labeledTabs.find(t => t.id === activeId)?.label || null, [labeledTabs, activeId]);
 
+  /* --------------------- DRAG & DROP --------------------- */
+  const [dragId, setDragId] = useState(null);
+  const [overId, setOverId] = useState(null);
+  const [overPos, setOverPos] = useState(null); // 'before' | 'after'
+
+  const reorder = useCallback((fromId, toId, place) => {
+    if (!fromId || !toId || fromId === toId) return;
+    const cur = [...tabs];
+    const from = cur.findIndex(t => t.id === fromId);
+    const to   = cur.findIndex(t => t.id === toId);
+    if (from === -1 || to === -1) return;
+
+    const item = cur.splice(from, 1)[0];
+    let insertAt = to;
+    if (place === "after") insertAt = to + (from < to ? 0 : 1);
+    if (place === "before") insertAt = to + (from < to ? -1 : 0);
+    if (insertAt < 0) insertAt = 0;
+    if (insertAt > cur.length) insertAt = cur.length;
+    cur.splice(insertAt, 0, item);
+
+    setTabs(cur);
+    writeTabs(cur);
+    if (typeof onChange === "function") onChange();
+  }, [tabs, onChange]);
+
+  const onDragStart = (e, id) => {
+    setDragId(id);
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", id); } catch {}
+  };
+  const onDragOver = (e, id) => {
+    e.preventDefault();
+    if (!dragId || dragId === id) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mid = rect.left + rect.width / 2;
+    setOverId(id);
+    setOverPos(e.clientX < mid ? "before" : "after");
+  };
+  const onDrop = (e, id) => {
+    e.preventDefault();
+    if (dragId && id) reorder(dragId, id, overPos || "after");
+    setOverId(null); setOverPos(null); setDragId(null);
+  };
+  const onDragEnd = () => { setOverId(null); setOverPos(null); setDragId(null); };
+
+  // drop na końcu (na „+”)
+  const onDropToAdd = (e) => {
+    e.preventDefault();
+    if (!dragId) return;
+    const cur = [...tabs];
+    const from = cur.findIndex(t => t.id === dragId);
+    if (from === -1) return;
+    const item = cur.splice(from, 1)[0];
+    cur.push(item);
+    setTabs(cur);
+    writeTabs(cur);
+    if (typeof onChange === "function") onChange();
+    setOverId(null); setOverPos(null); setDragId(null);
+  };
+
   return (
     <>
       {/* Dolne zakładki */}
-      <div className="tabs-bottom">
+      <div className={`tabs-bottom${dragId ? " is-dragging" : ""}`}>
         {(labeledTabs || []).map((t) => {
           const isActive = t.id === activeId;
+          const isDragOver = overId === t.id;
+          const overCls = isDragOver ? (overPos === "before" ? " drag-over-before" : " drag-over-after") : "";
           return (
-            <div key={t.id} className={`tab-bottom${isActive ? " active" : ""}`}>
-              <button className="tab" onClick={() => onOpen(t)}>
-                {t.label}
-              </button>
+            <div
+              key={t.id}
+              className={`tab-bottom${isActive ? " active" : ""}${overCls}`}
+              draggable
+              onDragStart={(e) => onDragStart(e, t.id)}
+              onDragOver={(e) => onDragOver(e, t.id)}
+              onDrop={(e) => onDrop(e, t.id)}
+              onDragEnd={onDragEnd}
+            >
+              <button className="tab" onClick={() => onOpen(t)}>{t.label}</button>
               <button className="close" onClick={() => onRemove(t)} aria-label="Usuń">×</button>
             </div>
           );
         })}
-        {/* + dodaj */}
-<div className="tab-bottom tab-bottom--add">
-  <button
-    className="tab"
-    onClick={addTabForCurrent}
-    title="Dodaj podsekcję"
-  >
-    + Dodaj sekcje
-  </button>
-</div>
 
+        {/* + dodaj / drop na koniec */}
+        <div
+          className="tab-bottom tab-bottom--add"
+          onDragOver={(e) => { e.preventDefault(); setOverId("ADD"); setOverPos("after"); }}
+          onDrop={onDropToAdd}
+          onDragEnd={onDragEnd}
+        >
+          <button className="tab" onClick={addTabForCurrent} title="Dodaj podsekcję">
+            + Dodaj sekcje
+          </button>
+        </div>
       </div>
 
       {activeLabel ? (

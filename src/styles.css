@@ -897,3 +897,47 @@ textarea::-webkit-scrollbar-corner{ background:var(--sb-corner); }
 .tabs-bottom::before{
   content: none !important;
 }
+
+/* Delikatne animacje dla drag&drop */
+.tabs-bottom .tab-bottom{
+  transition: margin .12s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+
+/* gdy przeciągamy nad kafelek – zrób miejsce po lewej/prawej */
+.tabs-bottom .tab-bottom.drag-over-before { margin-left: 18px; }
+.tabs-bottom .tab-bottom.drag-over-after  { margin-right: 18px; }
+
+/* wizualne zmniejszenie kafelka przeciąganego */
+.tabs-bottom.is-dragging .tab-bottom[draggable="true"]{
+  cursor: grabbing; 
+}
+
+/* Zielone podświetlenie kafelka "Dodaj sekcje" */
+:root{
+  /* jeśli nie masz takiej zmiennej, ten fallback zadziała */
+  --ok: #22c55e; /* Tailwind green-500 */
+}
+
+/* gładkie przejścia */
+.tabs-bottom .tab-bottom--add{
+  transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, color .15s ease;
+}
+
+/* hover nad całym kafelkiem */
+.tabs-bottom .tab-bottom--add:hover{
+  background: color-mix(in srgb, var(--ok) 12%, var(--card) 88%);
+  border-top-color: var(--ok);
+  box-shadow: 0 1px 0 rgba(0,0,0,.06);
+}
+
+/* dla pewności: hover nad samym przyciskiem wewnątrz */
+.tabs-bottom .tab-bottom--add .tab:hover{
+  color: var(--ok);
+}
+
+/* podczas drag&drop – gdy przeciągasz i najedziesz na kafelek dodawania */
+.tabs-bottom.is-dragging .tab-bottom--add:hover{
+  background: color-mix(in srgb, var(--ok) 18%, var(--card) 82%);
+  border-top-color: var(--ok);
+}
+
