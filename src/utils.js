@@ -95,7 +95,7 @@ const DEFAULT_IFACES = [{
   separators:[],
   flexFields:Array(12).fill(false)
 }];
-const DEFAULT_CFG = { siteTitle:'Interface Generator', homeTitle:'', homeSubtitle:'', theme:THEME_DARK, themeId:'dark', categories:DEFAULT_CATS, interfaces:DEFAULT_IFACES };
+const DEFAULT_CFG = { siteTitle:'', homeTitle:'', homeSubtitle:'', theme:THEME_DARK, themeId:'dark', categories:DEFAULT_CATS, interfaces:DEFAULT_IFACES };
 
 // ===== Storage helpers =====
 function ensureDefault(){
@@ -109,7 +109,7 @@ export function loadConfig(){
   try{
     ensureDefault();
     const cfg = JSON.parse(localStorage.getItem(KEY_CFG) || '{}');
-    cfg.siteTitle = cfg.siteTitle || 'Generator Interfejsów';
+    cfg.siteTitle = cfg.siteTitle || '';
     cfg.homeTitle = typeof cfg.homeTitle==='string'? cfg.homeTitle : '';
     cfg.homeSubtitle = typeof cfg.homeSubtitle==='string'? cfg.homeSubtitle : '';
     cfg.theme = cfg.theme || THEME_DARK; cfg.themeId = cfg.themeId || getThemeId(cfg);
