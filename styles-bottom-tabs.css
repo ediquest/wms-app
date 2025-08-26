@@ -1,0 +1,13 @@
+
+/* Bottom generated tabs */
+.tabs-bottom { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; border-top:1px solid var(--border); padding:6px 6px 0; }
+.tab-bottom { position:relative; display:flex; align-items:center; gap:8px; min-width:96px; padding:8px 20px 8px 12px;
+  border:1px solid var(--border); border-top:2px solid var(--border); border-radius:0 0 8px 8px;
+  background:color-mix(in srgb, var(--card) 75%, #0000); cursor:pointer; font-weight:600; }
+.tab-bottom.active { background:var(--card); border-top-color: var(--accent); }
+.tab-bottom .close { position:absolute; right:6px; top:50%; transform:translateY(-50%);
+  font-size:12px; line-height:1; padding:0 4px; border:0; border-radius:4px; background:transparent; color:var(--muted); }
+.tab-bottom .close:hover { background:rgba(226,84,84,.12); color:#e25454; }
+/* Dots for Introduction */
+.badge-dot { display:inline-block; width:10px; height:10px; border-radius:999px; background:var(--accent); border:1px solid var(--border); }
+.badge-dot.muted { background:transparent; border:1px dashed var(--border); }

@@ -3,6 +3,7 @@ import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { loadConfig, saveConfig, loadValues, saveValues, padToLen, timestamp, loadProjects, saveProjects, snapshotProject, applyProject } from '../utils.js';
 import { t } from '../i18n.js';
 import ScrollTabs from '../components/ScrollTabs.jsx';
+import GeneratedTabs from '../components/GeneratedTabs.jsx';
 
 export default function Home() {
   // Router info (declare ONCE inside the component)
@@ -117,9 +118,16 @@ export default function Home() {
   const [dragId, setDragId] = useState(null);
 
   // Only show interfaces that actually contribute lines (have included sections beyond Introduction)
-  const usedIds = useMemo(() => {
+  
+  // Generated sections (tabs) storage helper (per interface id)
+  const getGenTabsFor = (ifaceId) => {
+    try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(ifaceId)) || '[]') || []; } catch { return []; }
+  };
+const usedIds = useMemo(() => {
     const all = (cfg?.interfaces || []);
     const withIncluded = all.filter(itf => {
+      const g = getGenTabsFor(itf.id);
+      if (Array.isArray(g) && g.length > 0) return true;
       const incl = (Array.isArray(itf.includedSections) && itf.includedSections.length === itf.sections.length)
         ? itf.includedSections
         : (itf.sections || []).map(() => false);
@@ -310,6 +318,15 @@ export default function Home() {
 
   const perSectionJoined = useMemo(() => {
     if (!iface) return [];
+    const gen = getGenTabsFor(iface.id);
+    if (Array.isArray(gen) && gen.length > 0) {
+      return gen.map(tab => {
+        const sIx = tab.secIdx;
+        const idxs = (iface.fieldSections || []).map((s,i)=>s===sIx?i:-1).filter(i=>i!==-1);
+        const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
+        return idxs.map(i => padToLen(snapMap.has(i) ? snapMap.get(i) : (values[i] ?? ''), getLen(i))).join('');
+      });
+    }
     const included = (Array.isArray(iface.includedSections) && iface.includedSections.length === iface.sections.length)
       ? iface.includedSections
       : (iface.sections || []).map((_, ix) => false);
@@ -321,8 +338,7 @@ export default function Home() {
     return lines;
   }, [values, iface]);
 
-  
-const finalText = useMemo(() => {
+  const finalText = useMemo(() => {
   // Helper to get field indexes for a section
   const idxsFor = (itf, sectionIx) => (itf.fieldSections || [])
     .map((sec,i)=>sec===sectionIx?i:-1).filter(i=>i!==-1);
@@ -330,39 +346,56 @@ const finalText = useMemo(() => {
   let seq = 1; // Global sequence counter (start from 1)
 
   const buildForOne = (itf, vals) => {
-    const included = (Array.isArray(itf.includedSections) && itf.includedSections.length === itf.sections.length)
-      ? itf.includedSections
-      : (itf.sections || []).map(() => false);
-
-    const lines = [];
-    for (let sIx = 0; sIx < (itf.sections?.length || 0); sIx++) {
-      if (!included[sIx]) continue;
-      const idxs = idxsFor(itf, sIx);
-      if (!idxs.length) continue;
-
-      // raw row values
-      const row = idxs.map(i => String((vals[i] ?? '')).trim());
-
-      // overwrite Sequence in this row
-      const seqIdx = findSeqIndex(itf, sIx);
-      if (seqIdx != null) {
-        const posInRow = idxs.indexOf(seqIdx);
-        if (posInRow !== -1) {
-          const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
-          const seqStr = String(seq).padStart(fieldLen, '0').slice(-fieldLen);
-          row[posInRow] = seqStr;
+      const idxsFor = (it, sectionIx) => (it.fieldSections || []).map((sec,i)=>sec===sectionIx?i:-1).filter(i=>i!==-1);
+      // Prefer generated tabs if exist
+      const gen = (function(){ try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || []; } catch { return []; } })();
+      const lines = [];
+      if (Array.isArray(gen) && gen.length > 0) {
+        for (const tab of gen) {
+          const sIx = tab.secIdx;
+          const idxs = idxsFor(itf, sIx);
+          if (!idxs.length) continue;
+          const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
+          const row = idxs.map(i => String((snapMap.has(i) ? snapMap.get(i) : (vals[i] ?? ''))).trim());
+          const seqIdx = findSeqIndex(itf, sIx);
+          if (seqIdx != null) {
+            const posInRow = idxs.indexOf(seqIdx);
+            if (posInRow !== -1) {
+              const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
+              const seqStr = String(seq).padStart(fieldLen, '0').slice(-fieldLen);
+              row[posInRow] = seqStr;
+            }
+          }
+          const padded = row.map((v, k) => padToLen(v, getLenFor(itf, idxs[k])));
+          lines.push(padded.join(''));
+          seq += 1;
         }
-}
-
-      // padding per field using existing helpers
-      const padded = row.map((v, k) => padToLen(v, getLenFor(itf, idxs[k])));
-      lines.push(padded.join(''));
-
-      // increment global sequence after pushing line
-      seq += 1;
-    }
-    return lines;
-  };
+        return lines;
+      }
+      // fallback legacy includedSections
+      const included = (Array.isArray(itf.includedSections) && itf.includedSections.length === itf.sections.length)
+        ? itf.includedSections
+        : (itf.sections || []).map(() => false);
+      for (let sIx = 0; sIx < (itf.sections?.length || 0); sIx++) {
+        if (!included[sIx]) continue;
+        const idxs = idxsFor(itf, sIx);
+        if (!idxs.length) continue;
+        const row = idxs.map(i => String((vals[i] ?? '')).trim());
+        const seqIdx = findSeqIndex(itf, sIx);
+        if (seqIdx != null) {
+          const posInRow = idxs.indexOf(seqIdx);
+          if (posInRow !== -1) {
+            const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
+            const seqStr = String(seq).padStart(fieldLen, '0').slice(-fieldLen);
+            row[posInRow] = seqStr;
+          }
+        }
+        const padded = row.map((v, k) => padToLen(v, getLenFor(itf, idxs[k])));
+        lines.push(padded.join(''));
+        seq += 1;
+      }
+      return lines;
+    };
 
   if (!iface) return '';
 
@@ -386,6 +419,34 @@ const finalText = useMemo(() => {
     const rows = [];
     let gseq = 1;
     const emitRowsFor = (itf, vals) => {
+      const gen = (function(){ try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || []; } catch { return []; } })();
+      if (Array.isArray(gen) && gen.length > 0) {
+        for (const tab of gen) {
+          const sIx = tab.secIdx;
+          const idxs = idxsFor(itf, sIx);
+          if (!idxs.length) continue;
+          const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
+          const rowVals = idxs.map(i => String((snapMap.has(i) ? snapMap.get(i) : (vals[i] ?? ''))).trim());
+          const seqIdx = findSeqIndex(itf, sIx);
+          if (seqIdx != null) {
+            const posInRow = idxs.indexOf(seqIdx);
+            if (posInRow !== -1) {
+              const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
+              const seqStr = String(gseq).padStart(fieldLen, '0').slice(-fieldLen);
+              rowVals[posInRow] = seqStr;
+              gseq++;
+            }
+          }
+          const obj = {};
+          idxs.forEach((i, k) => {
+            const label = String((itf.labels || [])[i] || `f${i}`);
+            obj[label] = rowVals[k];
+          });
+          rows.push(obj);
+        }
+        return;
+      }
+      // fallback to legacy includedSections
       const included = (Array.isArray(itf.includedSections) && itf.includedSections.length === itf.sections.length)
         ? itf.includedSections
         : (itf.sections || []).map(() => false);
@@ -401,16 +462,15 @@ const finalText = useMemo(() => {
             const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
             const seqStr = String(gseq).padStart(fieldLen, '0').slice(-fieldLen);
             rowVals[posInRow] = seqStr;
+            gseq++;
           }
         }
         const obj = {};
         idxs.forEach((i, k) => {
           const label = String((itf.labels || [])[i] || `f${i}`);
-          const val = rowVals[k];
-          if (!(skipEmpty && !String(val).length)) obj[label] = val;
+          obj[label] = rowVals[k];
         });
         rows.push(obj);
-        gseq += 1;
       }
     };
     if (combineAll) {
@@ -440,6 +500,34 @@ const finalText = useMemo(() => {
     };
     const joinRow = (arr) => arr.map(esc).join(csvSep);
     const emitRowsFor = (itf, vals) => {
+      const gen = (function(){ try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || []; } catch { return []; } })();
+      if (Array.isArray(gen) && gen.length > 0) {
+        for (const tab of gen) {
+          const sIx = tab.secIdx;
+          const idxs = idxsFor(itf, sIx);
+          if (!idxs.length) continue;
+          const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
+          const rowVals = idxs.map(i => String((snapMap.has(i) ? snapMap.get(i) : (vals[i] ?? ''))).trim());
+          const seqIdx = findSeqIndex(itf, sIx);
+          if (seqIdx != null) {
+            const posInRow = idxs.indexOf(seqIdx);
+            if (posInRow !== -1) {
+              const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
+              const seqStr = String(gseq).padStart(fieldLen, '0').slice(-fieldLen);
+              rowVals[posInRow] = seqStr;
+              gseq++;
+            }
+          }
+          const obj = {};
+          idxs.forEach((i, k) => {
+            const label = String((itf.labels || [])[i] || `f${i}`);
+            obj[label] = rowVals[k];
+          });
+          rows.push(obj);
+        }
+        return;
+      }
+      // fallback to legacy includedSections
       const included = (Array.isArray(itf.includedSections) && itf.includedSections.length === itf.sections.length)
         ? itf.includedSections
         : (itf.sections || []).map(() => false);
@@ -447,7 +535,6 @@ const finalText = useMemo(() => {
         if (!included[sIx]) continue;
         const idxs = idxsFor(itf, sIx);
         if (!idxs.length) continue;
-        const labels = idxs.map(i => String((itf.labels || [])[i] || `f${i}`));
         const rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
         const seqIdx = findSeqIndex(itf, sIx);
         if (seqIdx != null) {
@@ -456,11 +543,15 @@ const finalText = useMemo(() => {
             const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
             const seqStr = String(gseq).padStart(fieldLen, '0').slice(-fieldLen);
             rowVals[posInRow] = seqStr;
+            gseq++;
           }
         }
-        if (!header) header = labels;
-        rows.push(rowVals);
-        gseq += 1;
+        const obj = {};
+        idxs.forEach((i, k) => {
+          const label = String((itf.labels || [])[i] || `f${i}`);
+          obj[label] = rowVals[k];
+        });
+        rows.push(obj);
       }
     };
     if (combineAll) {
@@ -707,7 +798,7 @@ const clearSection = () => {
                         {nm}
                       </td>
                       <td style={{ backgroundColor: iface.sectionColors?.[ix] || 'transparent' }}>
-                        <input type="checkbox" checked={!!(iface.includedSections?.[ix] ?? false)} onChange={e => toggleInclude(ix, e.target.checked)} />
+                        {(function(){ try { const g = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(iface.id)) || '[]') || []; return g.some(t => t.secIdx === ix) ? <span title='Sekcja zawiera podsekcje'>●</span> : <span title='Brak podsekcji' style={{opacity:.4}}>○</span>; } catch { return <span style={{opacity:.4}}>○</span>; } })()}
                       </td>
                     </tr>
                   ))}
@@ -760,7 +851,17 @@ const clearSection = () => {
                 ))}
               </div>
               <div className="actions-split">
-                <div className="actions"></div>
+                <div className="actions">
+                  <GeneratedTabs
+                    iface={iface}
+                    activeSec={activeSec}
+                    values={values}
+                    valsMap={valsMap}
+                    setValues={setValues}
+                    setValsMap={setValsMap}
+                    onSwitchSection={(ix)=>setActiveSec(ix)}
+                  />
+                </div>
                 <div className="actions">
                   <button onClick={fillDefaultValues}>{t('fillDefaults') || 'Fill in default values'}</button>
 

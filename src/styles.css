@@ -841,3 +841,15 @@ textarea::-webkit-scrollbar-corner{ background:var(--sb-corner); }
   gap: 10px;
   flex-wrap: wrap;
 }
+
+
+/* Bottom generated tabs */
+.tabs-bottom{ display:flex; gap:6px; flex-wrap:wrap; margin:6px 0 0; border-top:1px solid var(--border); padding:6px 6px 0; }
+.tab-bottom{ padding:8px 12px; border-radius:0 0 8px 8px; border:1px solid var(--border); border-top:2px solid var(--border); background:color-mix(in srgb, var(--card) 75%, #0000); cursor:pointer; font-weight:600; display:flex; align-items:center; gap:8px; }
+.tab-bottom.active{ background:var(--card); position:relative; top:-1px; border-top:2px solid var(--accent); }
+.tab-bottom .close{ border:0; background:transparent; cursor:pointer; color:var(--muted); font-weight:700 }
+.tab-bottom .close:hover{ color:var(--text) }
+
+/* Badge dot for sections with generated pods */
+.badge-dot{ display:inline-block; width:10px; height:10px; border-radius:999px; background:var(--accent); border:1px solid var(--border); }
+.badge-dot.muted{ background:transparent; border:1px dashed var(--border); }
