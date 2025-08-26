@@ -142,6 +142,28 @@ const usedIds = useMemo(() => {
     const rest = withIncluded.filter(id => !prioritized.includes(id));
     return prioritized.concat(rest);
   }, [combineOrder, cfg?.interfaces]);
+  // === Section usage helpers (icon + counter in Introduction) ===
+  const usedCountForSection = (itf, sIx) => {
+    if (!itf || sIx == null) return 0;
+    const idxs = (itf.fieldSections || []).map((sec, i) => (sec === sIx ? i : -1)).filter(i => i !== -1);
+    if (!idxs.length) return 0;
+    try {
+      const g = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || [];
+      if (Array.isArray(g) && g.length > 0) {
+        return g.filter(t => t && Number(t.secIdx) === Number(sIx)).length;
+      }
+    } catch {}
+    const vals = valsMap[itf.id] || values || [];
+    if (idxs.some(i => String(vals[i] ?? '').trim() !== '')) return 1;
+    const included = (Array.isArray(itf.includedSections) && itf.includedSections.length === (itf.sections?.length || 0))
+      ? itf.includedSections
+      : (itf.sections || []).map(() => false);
+    return included[sIx] ? 1 : 0;
+  };
+  const hasDataForSection = (itf, sIx) => {
+    try { return usedCountForSection(itf, sIx) > 0; } catch { return false; }
+  };
+
 
 
   // Workspace-aware keys for persistence
@@ -396,7 +418,11 @@ const usedIds = useMemo(() => {
     } catch {}
 
     for (let sIx = 0; sIx < (itf.sections?.length || 0); sIx++) {
-      if (!included[sIx]) continue;
+      if (!included[sIx]) {
+        const idxsProbe = (itf.fieldSections || []).map((sec,i)=>sec===sIx?i:-1).filter(i=>i!==-1);
+        const hasData = idxsProbe.some(i => String((vals[i] ?? '')).trim() !== '');
+        if (!hasData) continue;
+      }
       const idxs = idxsFor(itf, sIx);
       if (!idxs.length) continue;
 
@@ -478,7 +504,11 @@ const usedIds = useMemo(() => {
         ? itf.includedSections
         : (itf.sections || []).map(() => false);
       for (let sIx = 0; sIx < (itf.sections?.length || 0); sIx++) {
-        if (!included[sIx]) continue;
+        if (!included[sIx]) {
+          const idxsProbe = (itf.fieldSections || []).map((sec,i)=>sec===sIx?i:-1).filter(i=>i!==-1);
+          const hasData = idxsProbe.some(i => String((vals[i] ?? '')).trim() !== '');
+          if (!hasData) continue;
+        }
         const idxs = idxsFor(itf, sIx);
         if (!idxs.length) continue;
         const rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
@@ -825,8 +855,17 @@ const clearSection = () => {
                         {nm}
                       </td>
                       <td style={{ backgroundColor: iface.sectionColors?.[ix] || 'transparent' }}>
-                        <input type="checkbox" checked={!!(iface.includedSections?.[ix] ?? false)} onChange={e => toggleInclude(ix, e.target.checked)} />
-                      </td>
+  {(() => {
+    const count = usedCountForSection(iface, ix);
+    const on = hasDataForSection(iface, ix);
+    return (
+      <span className="includeCell" style={{display:'inline-flex',alignItems:'center',gap:8}} title={(t('include')+`: ${count}`)}>
+        <span aria-hidden="true" style={{display:'inline-block',width:10,height:10,borderRadius:'50%',background: on ? 'var(--ok, #16a34a)' : 'var(--mutedText, #999)'}}></span>
+        <span className="badge" style={{fontSize:12,opacity:.8}}>{count}</span>
+      </span>
+    );
+  })()}
+</td>
                     </tr>
                   ))}
                 </tbody>
