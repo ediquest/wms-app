@@ -25,6 +25,10 @@ const dict = {
 
     // Sidebar / Menu
     tools: 'Tools',
+        searchAria: 'Search',
+    clear: 'Clear',
+
+    
 
     // Admin / list
     adminPanel: 'Admin panel',
@@ -134,6 +138,8 @@ maxLenFlex: 'Max length: FLEX',
 
     // Sidebar / Menu
     tools: 'Narzędzia',
+        searchAria: 'Szukaj',
+    clear: 'Wyczyść',
 
     // Admin / list
     adminPanel: 'Panel administracyjny',
@@ -312,6 +318,8 @@ jsonArray: 'JSON en tableau',
 minified: 'Minifié',
 onlyFilled: 'Uniquement remplis',
 maxLenFlex: 'Longueur max : FLEX',
+  searchAria: 'Rechercher',
+  clear: 'Effacer',
 
   },
 
@@ -407,6 +415,8 @@ jsonArray: 'JSON jako pole',
 minified: 'Minifikované',
 onlyFilled: 'Jen vyplněná',
 maxLenFlex: 'Max. délka: FLEX',
+  searchAria: 'Hledat',
+  clear: 'Vyčistit',
 
   },
 
@@ -500,8 +510,232 @@ jsonArray: 'JSON als Array',
 minified: 'Minimiert',
 onlyFilled: 'Nur ausgefüllte',
 maxLenFlex: 'Max. Länge: FLEX',
+    searchAria: 'Suchen',
+    clear: 'Leeren',
 
   },
+
+  es: {
+  // Header / top bar
+  language: 'Idioma',
+  scheme: 'Esquema de color',
+
+  // Home
+  home: 'Inicio',
+  chooseInterface: 'Inicio',
+  clickToGo: 'Elige una interfaz para empezar',
+  result: 'Resultado',
+  copy: 'Copiar',
+  combineAll: 'Combinar de todas las interfaces',
+  orderInterfaces: 'Orden de interfaces',
+  download: 'Descargar',
+  clearSection: 'Limpiar sección',
+  clear: 'Limpiar',
+  notAllRequired: 'Por favor, rellena todos los campos obligatorios',
+  fillDefaults: 'Rellenar valores predeterminados',
+
+  // Sidebar / Menu
+  tools: 'Herramientas',
+  searchAria: 'Buscar',
+  clear: 'Limpiar',
+
+  // Admin / list
+  adminPanel: 'Panel de administración',
+  adminTitle: 'Generador de interfaces WMS',
+  overview: 'Resumen',
+  search: 'Buscar interfaz...',
+  addInterface: 'Añadir interfaz',
+  export: 'Exportar JSON',
+  import: 'Importar WMS (JSON)',
+  importAddNew: 'Añadir nuevo',
+  importOverwriteSelected: 'Sobrescribir seleccionados',
+  category: 'Categoría',
+  fieldsCount: 'Campos',
+  deleteInterface: 'Eliminar interfaz',
+  confirmDeleteInterface: '¿Seguro que quieres eliminar esta interfaz?',
+  editInAdmin: 'Editar en administración',
+  filterCat: 'Filtrar categoría',
+  defaultValues: 'Valores predeterminados',
+
+  // Admin / editor
+  tableOfContents: 'Tabla de contenidos',
+  interface: 'Interfaz',
+  number: 'Número',
+  desc: 'Descripción',
+  include: 'Incluir',
+  addSection: 'Añadir sección',
+  fieldsTitle: 'Campos',
+  sectionNumber: 'N.º',
+  renameSection: 'Renombrar sección',
+  description: 'Descripción',
+  required: 'Obligatorio',
+  alphanumeric: 'Alfanumérico',
+  numeric: 'Numérico',
+  addSeparator: 'Añadir separador',
+  moveTo: 'Mover a',
+  delete: 'Eliminar',
+  addField: 'Añadir campo',
+  backToList: 'Volver a la lista',
+  editInterface: 'Editar interfaz',
+  maxLen: 'Longitud máx.',
+  ifaceType: 'Tipo',
+  io: 'E/S',
+  renameCategory: 'Renombrar categoría',
+  addCategory: 'Añadir categoría',
+  fields: 'Campos',
+
+  // Import/Export / Backup
+  exportBackup: 'Exportar copia de seguridad',
+  importBackup: 'Importar copia de seguridad',
+  invalidJson: 'Archivo JSON no válido.',
+  importOk: 'Importación completada.',
+  backupOk: 'Copia de seguridad importada.',
+  exportOk: 'Exportación realizada.',
+  importOneOk: 'Interfaz importada.',
+
+  // Workspace
+  workspaceProjects: 'Proyectos',
+  newWorkspace: 'Nuevo espacio de trabajo',
+  saveWorkspace: 'Guardar espacio de trabajo',
+  exportWorkspace: 'Exportar espacio de trabajo',
+  importWorkspace: 'Importar espacio de trabajo',
+  deleteWorkspace: 'Eliminar espacio de trabajo',
+  currentWorkspace: 'Espacio de trabajo actual',
+  workspaceName: 'Nombre del espacio de trabajo',
+  workspaceSaved: 'Espacio de trabajo guardado',
+  workspaceApplied: 'Espacio de trabajo aplicado',
+  autosave: 'Autoguardado',
+  on: 'Activado',
+  off: 'Desactivado',
+  apply: 'Aplicar',
+  clearColor: 'Borrar color',
+  saveProjectChanges: 'Guardar cambios del proyecto',
+  projectChangesSaved: 'Cambios del proyecto guardados',
+  workspaceCleared: 'Proyecto limpiado',
+  confirmNewWorkspace: '¿Crear un proyecto nuevo?',
+
+  csvMode: 'Modo CSV',
+  csvHeader: 'Cabecera CSV',
+  csvSep: 'Sep.',
+  csvSeparator: 'Separador',
+  jsonMode: 'Modo JSON',
+  jsonArray: 'JSON como array',
+  minified: 'Minificado',
+  onlyFilled: 'Solo rellenados',
+  maxLenFlex: 'Longitud máx.: FLEX',
+},
+
+it: {
+  // Header / top bar
+  language: 'Lingua',
+  scheme: 'Schema colori',
+
+  // Home
+  home: 'Home',
+  chooseInterface: 'Home',
+  clickToGo: "Scegli un'interfaccia per iniziare",
+  result: 'Risultato',
+  copy: 'Copia',
+  combineAll: 'Combina da tutte le interfacce',
+  orderInterfaces: 'Ordine delle interfacce',
+  download: 'Scarica',
+  clearSection: 'Pulisci sezione',
+  clear: 'Pulisci',
+  notAllRequired: 'Per favore, compila tutti i campi obbligatori',
+  fillDefaults: 'Compila con i valori predefiniti',
+
+  // Sidebar / Menu
+  tools: 'Strumenti',
+  searchAria: 'Cerca',
+  clear: 'Pulisci',
+
+  // Admin / list
+  adminPanel: 'Pannello di amministrazione',
+  adminTitle: 'Generatore di interfacce WMS',
+  overview: 'Panoramica',
+  search: 'Cerca interfaccia...',
+  addInterface: 'Aggiungi interfaccia',
+  export: 'Esporta JSON',
+  import: 'Importa WMS (JSON)',
+  importAddNew: 'Aggiungi nuovo',
+  importOverwriteSelected: 'Sovrascrivi selezionati',
+  category: 'Categoria',
+  fieldsCount: 'Campi',
+  deleteInterface: 'Elimina interfaccia',
+  confirmDeleteInterface: 'Sei sicuro di voler eliminare questa interfaccia?',
+  editInAdmin: 'Modifica nel pannello',
+  filterCat: 'Filtra categoria',
+  defaultValues: 'Valori predefiniti',
+
+  // Admin / editor
+  tableOfContents: 'Indice',
+  interface: 'Interfaccia',
+  number: 'Numero',
+  desc: 'Descrizione',
+  include: 'Includi',
+  addSection: 'Aggiungi sezione',
+  fieldsTitle: 'Campi',
+  sectionNumber: 'N.',
+  renameSection: 'Rinomina sezione',
+  description: 'Descrizione',
+  required: 'Obbligatorio',
+  alphanumeric: 'Alfanumerico',
+  numeric: 'Numerico',
+  addSeparator: 'Aggiungi separatore',
+  moveTo: 'Sposta in',
+  delete: 'Elimina',
+  addField: 'Aggiungi campo',
+  backToList: 'Torna alla lista',
+  editInterface: 'Modifica interfaccia',
+  maxLen: 'Lunghezza max',
+  ifaceType: 'Tipo',
+  io: 'I/O',
+  renameCategory: 'Rinomina categoria',
+  addCategory: 'Aggiungi categoria',
+  fields: 'Campi',
+
+  // Import/Export / Backup
+  exportBackup: 'Esporta backup',
+  importBackup: 'Importa backup',
+  invalidJson: 'File JSON non valido.',
+  importOk: 'Importazione completata.',
+  backupOk: 'Backup importato.',
+  exportOk: 'Esportazione completata.',
+  importOneOk: 'Interfaccia importata.',
+
+  // Workspace
+  workspaceProjects: 'Progetti',
+  newWorkspace: 'Nuovo spazio di lavoro',
+  saveWorkspace: 'Salva spazio di lavoro',
+  exportWorkspace: 'Esporta spazio di lavoro',
+  importWorkspace: 'Importa spazio di lavoro',
+  deleteWorkspace: 'Elimina spazio di lavoro',
+  currentWorkspace: 'Spazio di lavoro attuale',
+  workspaceName: 'Nome spazio di lavoro',
+  workspaceSaved: 'Spazio di lavoro salvato',
+  workspaceApplied: 'Spazio di lavoro applicato',
+  autosave: 'Salvataggio automatico',
+  on: 'Attivo',
+  off: 'Disattivo',
+  apply: 'Applica',
+  clearColor: 'Pulisci colore',
+  saveProjectChanges: 'Salva le modifiche del progetto',
+  projectChangesSaved: 'Modifiche del progetto salvate',
+  workspaceCleared: 'Progetto ripulito',
+  confirmNewWorkspace: 'Creare un nuovo progetto?',
+
+  csvMode: 'Modalità CSV',
+  csvHeader: 'Intestazione CSV',
+  csvSep: 'Sep.',
+  csvSeparator: 'Separatore',
+  jsonMode: 'Modalità JSON',
+  jsonArray: 'JSON come array',
+  minified: 'Minificato',
+  onlyFilled: 'Solo compilati',
+  maxLenFlex: 'Lunghezza max: FLEX',
+}
+
+
 };
 
 // ----- API -----

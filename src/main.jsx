@@ -6,6 +6,7 @@ import './styles.css'
 import './styles_dock_fix_v6.css'
 import './styles_used_and_marquee.css'
 import './ui-fixes.css'
+import './i18n.js'
 import './marquee_and_used.runtime.js'
 import './home_search.runtime.js'
 createRoot(document.getElementById('root')).render(

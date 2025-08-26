@@ -17,7 +17,7 @@ export default function App(){
 
   useEffect(() => { applyTheme(cfg.theme); }, []);
 
-  const changeLang = (e) => { const v=e.target.value; setLang(v); setLangState(v); setCfg(loadConfig()); };
+  const changeLang = (e) => { const v=e.target.value; setLang(v); setLangState(v); setCfg(loadConfig()); try { window.dispatchEvent(new CustomEvent('i18n:changed', { detail: { lang: v } })); } catch(_){} };
   const changeScheme = (e) => { const v=e.target.value; setScheme(v); setThemeById(v); setCfg(loadConfig()); };;
   const changeRole = (e) => { const v=e.target.value; setRole(v); setRoleState(v); };
 
@@ -35,6 +35,8 @@ export default function App(){
       <option value="fr">Français</option>
       <option value="cs">Čeština</option>
       <option value="de">Deutsch</option>
+      <option value="es">Español</option>
+      <option value="it">Italiano</option>
     </select>
   </label>
   <label className="inline">
