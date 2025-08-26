@@ -267,7 +267,7 @@ React.useEffect(() => {
       </div>
 
       <div className="s-cat s-projects open">
-        <div className="s-cat-head">
+        <div className="s-cat-head" style={{ justifyContent: 'flex-start', gap: 8 }}>
           <span className="s-item-icon"><Icon.FolderOpen /></span>
           <span className="s-cat-title">{t('workspaceProjects') || t('projects') || 'Projekty'}</span>
         </div>

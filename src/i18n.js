@@ -87,7 +87,7 @@ const dict = {
     importOneOk: 'Interface imported.',
 
     // Workspace
-    workspaceProjects: 'Projekty',
+    workspaceProjects: 'Projects',
     newWorkspace: 'New workspace',
     saveWorkspace: 'Save workspace',
     exportWorkspace: 'Export workspace',
