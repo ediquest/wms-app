@@ -2,6 +2,12 @@
 import React, { useEffect, useState, startTransition } from 'react';
 import { Link } from 'react-router-dom';
 import { t } from '../i18n.js';
+
+const textify = (x) => {
+  if (Array.isArray(x)) return x.flat().filter(Boolean).map(String).join(' ');
+  if (x == null) return '';
+  return typeof x === 'string' ? x : String(x);
+};
 import { loadConfig, loadValues } from '../utils.js';
 import {
   loadWorkspaceProjects, saveWorkspaceProjects,
@@ -105,7 +111,7 @@ React.useEffect(() => {
     const vals = loadValues() || {};
     (cfg.interfaces || []).forEach(it => {
       const arr = vals[it.id] || [];
-      const hasVal = Array.isArray(arr) && arr.some(s => (s || '').trim().length > 0);
+      const hasVal = Array.isArray(arr) && arr.some(s => textify(s).trim().length > 0);
       const includes = Array.isArray(it.includedSections) && it.includedSections.some(Boolean);
       if (hasVal || includes) used.add(it.id);
     });

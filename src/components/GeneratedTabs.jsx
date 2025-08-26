@@ -1,9 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
 
-/**
- * GeneratedTabs — bottom tabs manager (auto-expanding, stable numbering)
- * Immediate textarea refresh: writes to localStorage synchronously and calls onChange()
- */
+import React from 'react';
+import ScrollTabs from './ScrollTabs.jsx';
+
 export default function GeneratedTabs({
   iface,
   activeSec,
@@ -11,119 +9,86 @@ export default function GeneratedTabs({
   valsMap,
   setValues,
   setValsMap,
-  onSwitchSection,
-  onChange,
-  children,
-}) {
-  const key = useMemo(() => `tcf_genTabs_${String(iface?.id ?? "")}`, [iface?.id]);
+  onSwitchSection, onChange }){
+  if (!iface) return null;
+  const key = 'tcf_genTabs_' + String(iface.id);
+  const activeKey = 'tcf_genTabs_active_' + String(iface.id);
+const writeTabs = (arr) => { try { localStorage.setItem(key, JSON.stringify(arr)); } catch {} };
 
-  const readTabs = () => {
-    try { const raw = localStorage.getItem(key); const arr = raw ? JSON.parse(raw) : []; return Array.isArray(arr) ? arr : []; }
-    catch { return []; }
+  const [tabs, setTabs] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem(key) || '[]') || []; } catch { return []; }
+  });
+
+  // Reload when iface changes
+  React.useEffect(() => {
+    try { setTabs(JSON.parse(localStorage.getItem(key) || '[]') || []); } catch { setTabs([]); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [iface?.id]);
+
+  // Persist
+  React.useEffect(() => {
+    try { localStorage.setItem(key, JSON.stringify(tabs)); } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabs, iface?.id]);
+
+  const takeSnapshot = (secIdx) => {
+    const idxs = (iface.fieldSections || []).map((s,i)=>s===secIdx?i:-1).filter(i=>i!==-1);
+    return idxs.map(i => ({ i, v: values[i] ?? '' }));
   };
-  const writeTabs = (arr) => { try { localStorage.setItem(key, JSON.stringify(arr)); } catch {} };
 
-  const [tabs, setTabs] = useState(() => readTabs());
-  const [activeId, setActiveId] = useState(null);
-
-  useEffect(() => { setTabs(readTabs()); }, [key]);  // resync when iface changes
-
-  const takeSnapshot = () => {
-    const src = Array.isArray(valsMap?.[iface?.id]) ? valsMap[iface.id] : values;
-    return Array.isArray(src) ? [...src] : [];
-  };
-  const restoreSnapshot = (snap) => {
-    if (!iface) return;
-    const map = { ...(valsMap || {}), [iface.id]: Array.isArray(snap) ? [...snap] : [] };
-    setValsMap(map);
-    setValues(map[iface.id] || []);
-  };
-
-  const computeSecNo = (secIdx) => {
-    const fromTitle = (((iface?.sections?.[secIdx] || '').match(/\b(\d{3})\b/) || [])[1]);
-    const raw = fromTitle ?? iface?.sectionNumbers?.[secIdx] ?? String(secIdx * 10);
-    const s = String(raw ?? "");
-    return s.padStart(3, "0").slice(-3);
+  const applySnapshot = (snap) => {
+    const arr = (valsMap[iface.id] ?? Array.from({ length: (iface.labels || []).length }, () => '')).slice();
+    (snap || []).forEach(({i, v}) => { arr[i] = v; });
+    setValues(arr);
+    const map = { ...valsMap, [iface.id]: arr }; setValsMap(map);
+    try { localStorage.setItem('tcf_values', JSON.stringify(map)); } catch {}
   };
 
   const onGenerate = () => {
-    if (!iface) return;
     const secIdx = activeSec;
-    const secNo = computeSecNo(secIdx);
-    const snapshot = takeSnapshot();
-    const id = Math.random().toString(36).slice(2);
-    const ord = tabs.filter(x => String(x.secNo) == String(secNo)).length + 1;
-    const next = [...tabs, { id, secIdx, secNo, ord, snapshot, createdAt: Date.now() }];
+    const secNo = ((()=>{ const fromTitle = (((iface.sections?.[secIdx]||'').match(/\b(\d{3})\b/)||[])[1]); const raw = fromTitle ?? (iface.sectionNumbers||[])[secIdx] ?? String(secIdx*10); const s=String(raw??''); return s.padStart(3,'0').slice(-3); })());
+    const snapshot = takeSnapshot(secIdx);
+    const id = Date.now().toString(36) + '_' + String(secNo) + '_' + Math.random().toString(36).slice(2,7);
+    const next = [...tabs, { id, secIdx, secNo, snapshot }];
     setTabs(next);
-    writeTabs(next);     // <-- sync persist so Home's builder sees it immediately
-    setActiveId(id);
-    onChange?.();        // <-- tell parent to recompute textarea
+      writeTabs(next);
+      try { localStorage.setItem(activeKey, id); } catch {}
+      if (typeof onChange === 'function') onChange();
   };
 
   const onOpen = (tab) => {
-    restoreSnapshot(tab.snapshot);
-    onSwitchSection?.(tab.secIdx);
-    setActiveId(tab.id);
+    applySnapshot(tab.snapshot);
+    if (typeof onSwitchSection === 'function') onSwitchSection(tab.secIdx);
+    try { localStorage.setItem(activeKey, tab.id); } catch {}
   };
 
   const onRemove = (tab) => {
     const next = tabs.filter(t => t.id !== tab.id);
     setTabs(next);
-    writeTabs(next);     // <-- sync persist
-    if (activeId === tab.id) setActiveId(null);
-    onChange?.();        // <-- recompute textarea
+    writeTabs(next);
+    try { const a = localStorage.getItem(activeKey); if (a === tab.id) localStorage.removeItem(activeKey); } catch {}
+    if (typeof onChange === 'function') onChange();
   };
 
-  const externalBtn = typeof children === "function" ? children({ onGenerate }) : (
-    <button onClick={onGenerate}>Generuj</button>
-  );
-
-  const labeledTabs = useMemo(() => {
-    // if some older tabs have no 'ord', compute stable labels on the fly
-    const counts = {};
-    return tabs.map(t => {
-      const k = String(t.secNo);
-      const ord = t.ord ?? ((counts[k] = (counts[k] || 0) + 1), counts[k]);
-      return { ...t, label: `${k}-${ord}`, ord };
-    });
-  }, [tabs]);
-
-  const activeLabel = useMemo(() => labeledTabs.find(t => t.id === activeId)?.label || null, [labeledTabs, activeId]);
-
+  // UI: left-aligned button + tabs bar
   return (
-    <>
-      {/* put the button next to other actions */}
-      {externalBtn}
-
-      {/* bottom tabs (auto-wrap) */}
-      <div className="tabs-bottom">
-        {labeledTabs.map((t) => {
-          const isActive = t.id === activeId;
-          return (
-            <div
-              key={t.id}
-              className={`tab-bottom ${isActive ? "active" : ""}`}
-              onClick={() => onOpen(t)}
-              title={`Podsekcja ${t.label}`}
-            >
-              <span>{t.label}</span>
-              <button
-                className="close close--small"
-                onClick={(e) => { e.stopPropagation(); onRemove(t); }}
-                aria-label={`Usuń ${t.label}`}
-              >
-                ×
-              </button>
-            </div>
-          );
-        })}
+    <div className="genTabsBar" style={{ display:'flex', alignItems:'center', gap:8 }}>
+      <button onClick={onGenerate}>
+        { /* i18n key optional: 'generateSection' */ }
+        Generuj
+      </button>
+      <div style={{ minWidth: 200, flex:1 }}>
+        <ScrollTabs height={38}>
+          <div className="tabs">
+            {tabs.map((t) => (
+              <div key={t.id} className="tab" onClick={() => onOpen(t)} title={"Sekcja " + t.secNo}>
+                {t.secNo}
+                <button className="close" style={{ marginLeft:8 }} onClick={(e)=>{ e.stopPropagation(); onRemove(t); }}>×</button>
+              </div>
+            ))}
+          </div>
+        </ScrollTabs>
       </div>
-
-      {activeLabel ? (
-        <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
-          Aktywna podsekcja: <b>{activeLabel}</b>
-        </div>
-      ) : null}
-    </>
+    </div>
   );
 }

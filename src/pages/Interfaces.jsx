@@ -3,6 +3,13 @@ import React from 'react'
 import { loadConfig, loadValues } from '../utils.js'
 import { t } from '../i18n.js'
 
+// Bezpieczna zamiana na tekst (obsługuje: null, number, object, array)
+const textify = (x) => {
+  if (Array.isArray(x)) return x.flat().filter(Boolean).map(String).join(' ');
+  if (x == null) return '';
+  return typeof x === 'string' ? x : String(x);
+};
+
 export default function Interfaces(){
   const cfg = loadConfig();
   
@@ -19,7 +26,7 @@ export default function Interfaces(){
     const vals = loadValues() || {};
     (cfg.interfaces || []).forEach(it => {
       const arr = vals[it.id] || [];
-      const hasVal = Array.isArray(arr) && arr.some(s => (s || '').trim().length > 0);
+      const hasVal = Array.isArray(arr) && arr.some(s => textify(s).trim().length > 0);
       const includes = Array.isArray(it.includedSections) && it.includedSections.some(Boolean);
       if (hasVal || includes) used.add(it.id);
     });
@@ -27,23 +34,23 @@ export default function Interfaces(){
   }, [cfg, valTick]);
 
 const byCat = new Map();
-  cfg.categories.forEach(c => byCat.set(c.id, { cat:c, items: [] }));
-  cfg.interfaces.forEach(it => {
-    const key = it.categoryId || cfg.categories[0]?.id;
+  (cfg.categories || []).forEach(c => byCat.set(c.id, { cat:c, items: [] }));
+  (cfg.interfaces || []).forEach(it => {
+    const key = it.categoryId || (cfg.categories && cfg.categories[0] ? cfg.categories[0].id : 'default');
     if (!byCat.has(key)) byCat.set(key, { cat: { id: key, name: key }, items: [] });
     byCat.get(key).items.push(it);
   });
   return (
     <main className="wrap">
       <section className="card">
-        <h2>{(cfg.homeTitle||'').trim() || t('chooseInterface')}</h2>
-        <p className="muted">{(cfg.homeSubtitle||'').trim() || t('clickToGo')}</p>
+        <h2>{textify(cfg.homeTitle).trim() || t('chooseInterface')}</h2>
+        <p className="muted">{textify(cfg.homeSubtitle).trim() || t('clickToGo')}</p>
         {[...byCat.values()].map(group => (
           <div key={group.cat.id} style={{marginTop:10}}>
             <div className="catTitle">{group.cat.name}</div>
             <div className="ifaceGrid">
               {group.items.map(it => (
-                <Link key={it.id} className="ifaceCard" data-name={it.name} data-type={(it.type || it.typeCode || "")} style={usedIfaceIds.has(it.id) ? { boxShadow: 'inset 0 0 0 2px #2ecc71', borderRadius: 12 } : undefined} to={`/iface/${it.id}`}>
+                <Link key={it.id} className="ifaceCard" data-name={it.name} data-type={String(it.type || it.typeCode || "")} style={usedIfaceIds.has(it.id) ? { boxShadow: 'inset 0 0 0 2px #2ecc71', borderRadius: 12 } : undefined} to={`/iface/${it.id}`}>
                   <div className="ifaceTitle">
                     {/* subtle note icon */}
                     <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -54,10 +61,10 @@ const byCat = new Map();
 </svg>
                     <span>{it.name}</span>
                   </div>
-                  {it.summary ? (<div className="ifaceSummary">{it.summary}</div>) : null}
+                  {it.summary ? (<div className="ifaceSummary">{textify(it.summary)}</div>) : null}
                   <div className="ifaceMeta">
                     <span className="badge cat">{group.cat.name}</span>
-                    <span>{it.labels.length} {t('fields')}</span>
+                    <span>{(Array.isArray(it.labels) ? it.labels.length : 0)} {t('fields')}</span>
                   </div>
                 </Link>
               ))}
