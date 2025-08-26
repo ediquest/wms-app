@@ -12,20 +12,8 @@ export default function Home() {
   const navigate = useNavigate();
   // ===== Export modes (CSV / JSON) =====
   // CSV
-  const [csvMode, setCsvMode] = useState(() => {
-    try { return localStorage.getItem('tcf_csv_mode') === '1'; }
-    catch { return false; }
-  });
-
-  const [csvSep, setCsvSep] = useState(() => {
-    try { return localStorage.getItem('tcf_csv_sep') || ';'; }
-    catch { return ';'; }
-  });
-
-  // Generated tabs change counter (textarea auto-refresh)
-  const [genTabsVersion, setGenTabsVersion] = useState(0);
-  const bumpGenTabs = () => setGenTabsVersion(v => v + 1);
-
+  const [csvMode, setCsvMode] = useState(() => { try { return localStorage.getItem('tcf_csv_mode') === '1'; } catch { return false; } });
+  const [csvSep, setCsvSep] = useState(() => { try { return localStorage.getItem('tcf_csv_sep') || ';'; } catch { return ';'; } });
   useEffect(() => { try { localStorage.setItem('tcf_csv_mode', csvMode ? '1' : '0'); } catch {} }, [csvMode]);
   useEffect(() => { try { localStorage.setItem('tcf_csv_sep', csvSep || ';'); } catch {} }, [csvSep]);
 
@@ -367,8 +355,15 @@ const usedIds = useMemo(() => {
           const sIx = tab.secIdx;
           const idxs = idxsFor(itf, sIx);
           if (!idxs.length) continue;
-          const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
-          const row = idxs.map(i => String((snapMap.has(i) ? snapMap.get(i) : (vals[i] ?? ''))).trim());
+          const snap = Array.isArray(tab.snapshot) ? tab.snapshot : vals;
+let row;
+if (snap && typeof snap[0] === 'object' && snap[0] && snap[0].i !== undefined) {
+  const map = new Map(snap.map(p => [p.i, p.v]));
+  row = idxs.map(i => String((map.has(i) ? map.get(i) : (vals[i] ?? ''))).trim());
+} else {
+  row = idxs.map(i => String((snap[i] ?? '')).trim());
+}
+
           const seqIdx = findSeqIndex(itf, sIx);
           if (seqIdx != null) {
             const posInRow = idxs.indexOf(seqIdx);
@@ -437,8 +432,15 @@ const usedIds = useMemo(() => {
           const sIx = tab.secIdx;
           const idxs = idxsFor(itf, sIx);
           if (!idxs.length) continue;
-          const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
-          const rowVals = idxs.map(i => String((snapMap.has(i) ? snapMap.get(i) : (vals[i] ?? ''))).trim());
+          const snap = Array.isArray(tab.snapshot) ? tab.snapshot : vals;
+let rowVals;
+if (snap && typeof snap[0] === 'object' && snap[0] && snap[0].i !== undefined) {
+  const map = new Map(snap.map(p => [p.i, p.v]));
+  rowVals = idxs.map(i => String((map.has(i) ? map.get(i) : (vals[i] ?? ''))).trim());
+} else {
+  rowVals = idxs.map(i => String((snap[i] ?? '')).trim());
+}
+
           const seqIdx = findSeqIndex(itf, sIx);
           if (seqIdx != null) {
             const posInRow = idxs.indexOf(seqIdx);
