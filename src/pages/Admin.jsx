@@ -2,8 +2,16 @@
 
 // --- helpers: wykrywanie i normalizacja pojedynczego interfejsu ---
 function isSingleInterface(obj) {
-  return !!(obj && Array.isArray(obj.sections) && Array.isArray(obj.sectionNumbers) && Array.isArray(obj.fields));
+  if (!obj || !Array.isArray(obj.sections)) return false;
+  const hasFlat = Array.isArray(obj.labels)
+    && Array.isArray(obj.lengths)
+    && Array.isArray(obj.required)
+    && Array.isArray(obj.types)
+    && Array.isArray(obj.fieldSections);
+  const hasNested = Array.isArray(obj.fields);
+  return hasFlat || hasNested;
 }
+
 function normalizeSingleInterface(incoming) {
   const out = { ...incoming };
   if (!out.id || typeof out.id !== 'string') {
@@ -38,7 +46,7 @@ function expandFieldsToFlat(iface){
   const n = iface.sections.length;
 
   // Build flat arrays from fields if provided
-  if (Array.isArray(iface.fields) && iface.fields.length === n){
+  if (!Array.isArray(iface.labels) && Array.isArray(iface.fields) && iface.fields.length === n){
     const labels=[], descriptions=[], lengths=[], required=[], types=[], fieldSections=[];
     let separators = Array.isArray(iface.separators) ? iface.separators.slice() : [];
     for (let s=0; s<n; s++){
