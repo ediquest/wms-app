@@ -725,7 +725,12 @@ const usedIds = useMemo(() => {
   };
   const clearForm = () => {
   if (!iface) return;
-  // 1) Clear all field values (existing behavior)
+  // Confirm before clearing everything (fields + subsections)
+  const ok = (typeof window !== 'undefined' && window.confirm)
+    ? window.confirm(t('confirmClearAll') || 'Na pewno wyczyścić pola i wszystkie podsekcje?')
+    : true;
+  if (!ok) return;
+// 1) Clear all field values (existing behavior)
   const empties = Array.from({ length: (iface.labels?.length || 0) }, () => '');
   setValues(empties);
   const map = { ...valsMap, [iface.id]: empties };
@@ -748,6 +753,16 @@ const usedIds = useMemo(() => {
     const nextCfg = { ...cfg, interfaces: (cfg?.interfaces || []).map(i => i.id === next.id ? next : i) };
     setCfg(nextCfg);
     saveConfig(nextCfg);
+  // 4) EXTRA: wipe all generated subsections (tabs) for this interface
+  try {
+    const key = 'tcf_genTabs_' + String(iface.id);
+    const activeKey = 'tcf_genTabs_active_' + String(iface.id);
+    try { localStorage.removeItem(key); } catch {}
+    try { localStorage.removeItem(activeKey); } catch {}
+  } catch {}
+  // trigger UI refresh (recompute result + remount tabs)
+  try { bumpGenTabs(); } catch {}
+
   } catch (e) {
     console.warn('clearForm extras failed', e);
   }
@@ -917,7 +932,7 @@ const clearSection = () => {
               </div>
               <div className="actions-split">
                 <div className="actions">
-<GeneratedTabs
+<GeneratedTabs key={`gt_${String(iface?.id ?? '')}_${genTabsVersion}`}
   iface={iface}
   activeSec={activeSec}
   values={values}
