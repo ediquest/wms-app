@@ -1070,3 +1070,4 @@ textarea::-webkit-scrollbar-corner{ background:var(--sb-corner); }
 .sidebar .s-templates textarea.tpl-rename-input:focus{
   background: var(--card, #0b1026);
 }
+

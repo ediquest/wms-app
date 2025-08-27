@@ -40,7 +40,7 @@
   border-top-right-radius: 14px;
 }
 .result-dock .dock-head{ height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 12px; font-weight:600; }
-.result-dock .dock-body{ padding:12px; max-height: 38vh; overflow:auto; }
+.result-dock .dock-body{ padding:12px; max-height: 75vh; overflow:auto; }
 .result-dock.closed{ transform: translateY(100%); } /* całkiem poza ekran, zostaje tylko FAB */
 .dock-toggle{ border:1px solid var(--hairline, rgba(0,0,0,.12)); border-radius:8px; padding:4px 8px; }
 .dock-fab{ position:fixed; right:16px; bottom:16px; z-index:41; border-radius:999px; padding:10px 14px;

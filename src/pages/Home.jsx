@@ -40,6 +40,20 @@ export default function Home() {
 
   // --- Segmentation state ---
   const [segmentMode, setSegmentMode] = useState(false);
+  // Toggle Segmentation button handler (highlight toggle)
+  const onToggleSegmentation = () => {
+    try {
+      setSegmentMode(prev => {
+        const next = !prev;
+        // when leaving segmentation, clear the pasted text
+        if (!next) {
+          try { setSegmentTextStr(''); } catch (e) {}
+        }
+        return next;
+      });
+    } catch (e) {}
+  };
+
   const [segmentTextStr, setSegmentTextStr] = useState('');
   const [copiedFlash, setCopiedFlash] = useState(false);
 
@@ -257,7 +271,16 @@ const usedIds = useMemo(() => {
     } catch (e) {}
   }, [wsIdForPersist]);
 
-  useEffect(() => { try { localStorage.setItem(`tcf_${wsIdForPersist}_dock_h`, String(Math.round(dockH))); } catch (e) {} }, [dockH, wsIdForPersist]);
+  
+
+  // seed combineOrder when combineAll toggles
+  useEffect(() => {
+    if (combineAll && (!combineOrder || !combineOrder.length)) {
+      const seed = (usedIds && usedIds.length) ? usedIds : (iface ? [iface.id] : (cfg?.interfaces||[]).map(i=>i.id));
+      try { setCombineOrder(seed); } catch (e) {}
+    }
+  }, [combineAll, combineOrder, usedIds, iface, cfg?.interfaces]);
+useEffect(() => { try { localStorage.setItem(`tcf_${wsIdForPersist}_dock_h`, String(Math.round(dockH))); } catch (e) {} }, [dockH, wsIdForPersist]);
   useEffect(() => { try { localStorage.setItem(`tcf_${wsIdForPersist}_combine_all`, combineAll ? '1':'0'); } catch (e) {} }, [combineAll, wsIdForPersist]);
   useEffect(() => { try { localStorage.setItem(`tcf_${wsIdForPersist}_combine_order`, JSON.stringify(combineOrder||[])); } catch (e) {} }, [combineOrder, wsIdForPersist]);
 
@@ -476,12 +499,19 @@ return () => clearTimeout(timer);
     return lines;
   };
 
-  if (!iface) return '';
+  if (!combineAll && !iface) return '';
 
   const outLines = [];
   if (combineAll) {
-    const order = (Array.isArray(combineOrder) && combineOrder.length ? combineOrder : [iface.id])
-      .filter(id => (cfg.interfaces || []).some(i => i.id === id));
+    let order = [];
+    if (Array.isArray(combineOrder) && combineOrder.length) {
+      order = combineOrder;
+    } else if (Array.isArray(usedIds) && usedIds.length) {
+      order = usedIds;
+    } else {
+      order = iface ? [iface.id] : (cfg.interfaces || []).map(i => i.id);
+    }
+    order = order.filter(id => (cfg.interfaces || []).some(i => i.id === id));
     for (const ifId of order) {
       const itf = (cfg.interfaces || []).find(i => i.id === ifId);
       if (!itf) continue;
@@ -848,6 +878,97 @@ const clearForm = () => {
   setColorPicker(null);
 };
 
+  // Run segmentation: parse textarea content into fields & tabs, update states & auto-enable Multi if needed
+  const segmentRun = () => {
+    try {
+      const raw = String(segmentTextStr || '').trim();
+      if (!raw) { try { alert(t('segEmpty') || 'Wklej najpierw tekst do segmentacji.'); } catch (e) {} return; }
+
+      // Parse
+      const res = segmentText(raw, cfg, iface, valsMap);
+      const { valsMap: nextVals, tabsById, readCount = 0, badLines = [], involvedIfaceIds = [] } = res || {};
+
+      // Persist generated tabs per interface
+      try {
+        for (const it of (cfg?.interfaces || [])) {
+          const id = it.id;
+          const list = (tabsById && typeof tabsById.get === 'function') ? (tabsById.get(id) || []) : [];
+          localStorage.setItem('tcf_genTabs_' + String(id), JSON.stringify(list || []));
+        }
+      } catch (e) {}
+
+      // Update values
+      setValsMap(nextVals);
+      saveValues(nextVals);
+
+      // Recompute usage for Introduction badges
+      applySectionUsage(nextVals, tabsById);
+
+                  // Auto-enable Multi if >= 2 interfaces (involvedIfaceIds ∪ ids with generated tabs)
+      try {
+        const inv = Array.isArray(involvedIfaceIds) ? involvedIfaceIds : [];
+        const fromTabs = [];
+        try {
+          if (tabsById && typeof tabsById.forEach === 'function') {
+            tabsById.forEach((arr, id) => { if (Array.isArray(arr) && arr.length > 0) fromTabs.push(id); });
+          }
+        } catch (e) {}
+        const allIds = Array.from(new Set([...(inv||[]), ...(fromTabs||[])]));
+        if (allIds.length > 1) {
+          setCombineOrder(allIds);
+          setCombineAll(true);
+        } else {
+          setCombineAll(false);
+        }
+      } catch (e) {}
+
+// Summary + required-fields validation
+      try {
+        // Validate required fields per used section
+        let missingReq = 0;
+        for (const it of (cfg?.interfaces || [])) {
+          const id = it.id;
+          const base = Array.isArray(nextVals?.[id]) ? nextVals[id] : [];
+          const tabs = (tabsById && typeof tabsById.get==='function') ? (tabsById.get(id)||[]) : [];
+          const total = (it.sections||[]).length;
+          for (let s=1; s<total; s++) {
+            // section considered only if included
+            const idxs = (it.fieldSections||[]).map((sec,i)=> sec===s ? i : -1).filter(i=>i!==-1);
+            const reqIdxs = idxs.filter(i => Array.isArray(it.required) && !!it.required[i]);
+            if (!reqIdxs.length) continue;
+            const tabsFor = tabs.filter(t => t.secIdx === s);
+            if (tabsFor.length) {
+              for (const t of tabsFor) {
+                const snap = t.snapshot || [];
+                const map = new Map(snap.map(x => [x.i, x.v]));
+                const ok = reqIdxs.every(i => String(map.get(i) ?? base[i] ?? '').trim() !== '');
+                if (!ok) missingReq++;
+              }
+            } else {
+              const ok = reqIdxs.every(i => String(base[i]||'').trim() !== '');
+              if (!ok) missingReq++;
+            }
+          }
+        }
+        const invalidCount = Array.isArray(badLines) ? badLines.length : 0;
+        const msg = `${t('segSummary') || 'Podsumowanie'}:` +
+                    `\n${t('segRead') || 'Odczytane linie'}: ${String(readCount)}` +
+                    `\n${t('segBad') || 'Błędne linie'}: ${String(invalidCount)}` +
+                    (invalidCount ? `\n- ${badLines.join('\n- ')}` : '') ;
+        alert(msg);
+      } catch (e) {}
+
+      // Exit segmentation view
+      setSegmentTextStr('');
+      setSegmentMode(false);
+
+      } catch (e) {
+      console.error('segmentRun error', e);
+      try { alert('Segmentacja nie powiodła się: ' + (e?.message || e)); } catch (e) {}
+    }
+};
+
+
 
 const clearSection = () => {
     if (!iface) return;
@@ -898,7 +1019,40 @@ const clearSection = () => {
   }, [id]);
 
   
-  // === SEGMENTATION HELPERS ===
+  
+  // Compute includedSections and sectionUsageCounts based on valsMap + tabs
+  function applySectionUsage(valsMap, tabsById) {
+    try {
+      const nextCfg = { ...cfg };
+      nextCfg.interfaces = (cfg?.interfaces || []).map(it => {
+        const id = it.id;
+        const sections = it.sections || [];
+        const total = sections.length || 0;
+        const base = Array.isArray(valsMap?.[id]) ? valsMap[id] : [];
+        const tabs = (tabsById && typeof tabsById.get==='function') ? (tabsById.get(id)||[]) : [];
+        const counts = Array.from({ length: total }, () => 0);
+        const included = Array.from({ length: total }, () => false);
+        for (let s=1; s<total; s++){
+          const idxs = (it.fieldSections || []).map((sec,i)=> sec===s ? i : -1).filter(i=>i!==-1);
+          const hasBase = idxs.some(i => String(base[i]||'').trim() !== '');
+          const tabsFor = tabs.filter(t => t.secIdx === s);
+          const hasTab = tabsFor.some(t => (t.snapshot||[]).some(({i,v}) => idxs.includes(i) && String(v||'').trim() !== ''));
+          included[s] = hasBase || hasTab;
+          counts[s] = Math.max(0, tabsFor.length) || (hasBase ? 1 : 0);
+        }
+        return { ...it, includedSections: included, sectionUsageCounts: counts };
+      });
+      setCfg(nextCfg); saveConfig(nextCfg);
+      // mirror to iface if same id
+      try {
+        if (iface) {
+          const cur = nextCfg.interfaces.find(x => x.id === iface.id);
+          if (cur) setIface(cur);
+        }
+      } catch (e) {}
+    } catch (e) { console.error('applySectionUsage failed', e); }
+  }
+// === SEGMENTATION HELPERS ===
   function anyDataPresent() {
     try {
       const vals = valsMap || {};
@@ -952,111 +1106,17 @@ const clearSection = () => {
       // UI resets
       try { bumpGenTabs?.(); } catch (e) {}
       applySectionUsage(nextVals, tabsById);
-      setActiveSec(0);
-      setColorPicker(null);
-    } catch (e) { console.warn('globalWipeAll error', e); }
-  }
-
-  function onToggleSegmentation() {
-    if (!segmentMode) {
-      // turning ON
-      if (anyDataPresent()) {
-        const msg = (t('segConfirm') || 'Wykryto istniejące dane. Ta opcja wyczyści cały generator. Kontynuować?');
-        if (!(typeof window !== 'undefined' && window.confirm && window.confirm(msg))) return;
-        globalWipeAll();
-      }
-      setSegmentTextStr('');
-      setSegmentMode(true);
-      try { if (!dockOpen) setDockOpen(true); } catch (e) {}
-    } else {
-      // turning OFF -> only clear textarea
-      setSegmentTextStr('');
-      setSegmentMode(false);
-    }
-  }
-
-  
-  // === After-segmentation: recompute section usage (Introduction icons + counters) ===
-  
-
-  // Build Map<ifaceId, tabs[]> from localStorage (used when recomputing usage outside segmentation)
-  function tabsByIdFromStorage() {
-    const m = new Map();
-    try {
-      for (const it of (cfg?.interfaces || [])) {
-        const id = it.id;
-        try {
-          const key = 'tcf_genTabs_' + String(id);
-          const arr = JSON.parse(localStorage.getItem(key) || '[]');
-          if (Array.isArray(arr)) m.set(id, arr);
-          else m.set(id, []);
-        } catch { m.set(id, []); }
-      }
-    } catch (e) {}
-    return m;
-  }
-
-function applySectionUsage(nextVals, tabsByIdMap) {
-    const newCfg = {
-      ...cfg,
-      interfaces: (cfg?.interfaces || []).map(it => {
-        const id = it.id;
-        const nSecs = it.sections?.length || 0;
-        const counts = Array.from({ length: nSecs }, () => 0);
-
-        const fieldSecs = it.fieldSections || [];
-        const baseVals = nextVals[id] || [];
-
-        // Base: if any field in the section is non-empty -> at least 1
-        for (let i = 0; i < fieldSecs.length; i++) {
-          const s = fieldSecs[i];
-          if (s >= 0 && String(baseVals[i] ?? '').trim() !== '') {
-            counts[s] = Math.max(counts[s], 1);
-          }
-        }
-
-        // Tabs: each snapshot with secIdx increments usage for that section
-        try {
-          const tabs = (tabsByIdMap && tabsByIdMap.get) ? (tabsByIdMap.get(id) || []) : [];
-          for (const tb of tabs) {
-            const s = Number(tb && tb.secIdx);
-            if (Number.isFinite(s) && s >= 0 && s < nSecs) counts[s] += 1;
-          }
-        } catch (e) {}
-
-        return {
-          ...it,
-          includedSections: counts.map(c => c > 0),
-          sectionUsageCounts: counts, // optional counter for UI badges
-        };
-      }),
-    };
-    setCfg(newCfg);
-    saveConfig(newCfg);
-    try { window.dispatchEvent(new Event('tcf-config-changed')); } catch (e) {}
-  }
-
-function segmentRun() {
-    try{
-      const text = String(segmentTextStr || '');
-      const { valsMap: nextVals, tabsById, readCount, badLines, involvedIfaceIds } = segmentText(text, cfg, iface, valsMap);
-      // persist values
-      setValsMap(nextVals);
-      saveValues(nextVals);
-      // persist tabs per iface
+      // Auto-enable Multi if >=2 interfaces were touched; ensure order is unique; fallback to usedIds if segmentation omitted some.
       try {
-        for (const [id, list] of tabsById.entries()) {
-          const key = 'tcf_genTabs_' + String(id);
-          localStorage.setItem(key, JSON.stringify(list));
-          try { localStorage.removeItem('tcf_genTabs_active_' + String(id)); } catch (e) {}
+        const unique = Array.from(new Set(Array.isArray(involvedIfaceIds) ? involvedIfaceIds : []));
+        const multiReady = unique.length > 1 ? unique : ((usedIds && usedIds.length > 1) ? usedIds : []);
+        if (multiReady.length > 1) {
+          setCombineOrder(multiReady);
+          setCombineAll(true);
+        } else {
+          setCombineAll(false);
         }
       } catch (e) {}
-      try { bumpGenTabs?.(); } catch (e) {}
-      applySectionUsage(nextVals, tabsById);
-      if (Array.isArray(involvedIfaceIds) && involvedIfaceIds.length > 1) {
-        try { setCombineAll(true); } catch (e) {}
-        try { setCombineOrder(involvedIfaceIds); } catch (e) {}
-      }
       const invalidCount = badLines.length;
       const msg = (t('segSummary') || 'Podsumowanie') + ':\n' +
                   (t('segRead') || 'Odczytane linie') + ': ' + String(readCount) + '\n' +
@@ -1228,13 +1288,22 @@ if (!iface) return null;
           <div className="inner">
             <label className="block">
               <span>{t('result')}:</span>
-              <textarea className={'result-area' + (templFlash ? ' template-flash' : '') + (copiedFlash ? ' copied-flash' : '')} readOnly={!segmentMode} value={segmentMode ? segmentTextStr : finalText} onChange={e => segmentMode && setSegmentTextStr(e.target.value)} style={{height: dockH, transition: dockAnim ? 'height 180ms ease' : 'none', resize: 'none', outline: segmentMode ? '2px solid var(--ok, #16a34a)' : 'none', boxShadow: segmentMode ? '0 0 0 2px rgba(22,163,74,.25) inset' : 'none'}} />
+              <textarea className={'result-area' + (templFlash ? ' template-flash' : '') + (copiedFlash ? ' copied-flash' : '')} readOnly={!segmentMode} value={ segmentMode ? segmentTextStr : finalText } onChange={e => segmentMode && setSegmentTextStr(e.target.value)} style={{height: dockH, transition: dockAnim ? 'height 180ms ease' : 'none', resize: 'none', outline: segmentMode ? '2px solid var(--ok, #16a34a)' : 'none', boxShadow: segmentMode ? '0 0 0 2px rgba(22,163,74,.25) inset' : 'none'}} />
             </label>
             
             
             <div className="dock-options" style={{display:'flex',alignItems:'center',gap:16,justifyContent:'flex-start',flexWrap:'wrap'}}>
               <label style={{display:'flex',alignItems:'center',gap:8,marginRight:4}}>
-                <input type="checkbox" checked={combineAll} onChange={e => setCombineAll(e.target.checked)} />
+                <input type="checkbox" checked={combineAll} onChange={e => {
+                const checked = e.target.checked;
+                setCombineAll(checked);
+                if (checked && (!combineOrder || !combineOrder.length)) {
+                  try {
+                    const seed = (usedIds && usedIds.length) ? usedIds : (iface ? [iface.id] : (cfg?.interfaces||[]).map(i=>i.id));
+                    setCombineOrder(seed);
+                  } catch (e) {}
+                }
+              }} />
                 <span>{t('combineAll') || 'Combine from all interfaces'}</span>
               </label>
               {/* CSV / JSON toggles */}
@@ -1342,7 +1411,7 @@ if (!iface) return null;
               <div className="seg-btns" style={{ display:'inline-flex', gap:8 }}>
                 <button
                   className="combine-tile button-action"
-                  style={{ background: segmentMode ? 'var(--ok, #16a34a)' : undefined, color: segmentMode ? '#fff' : undefined, cursor:'pointer' }}
+                  style={{ background: segmentMode ? 'var(--accent, #2856e6)' : undefined, color: segmentMode ? '#fff' : undefined, cursor:'pointer' }}
                   onClick={onToggleSegmentation}
                   title={t('segTooltip') || 'Wklej wynik i zsegmentuj do pól'}
                 >
