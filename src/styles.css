@@ -941,3 +941,38 @@ textarea::-webkit-scrollbar-corner{ background:var(--sb-corner); }
   border-top-color: var(--ok);
 }
 
+
+
+/* --- Drag & drop for Interfaces grid --- */
+.ifaceGrid.drag-active .ifaceCard:not(.dragging){
+  transform: translateY(2px) scale(0.98);
+  opacity: .96;
+}
+.ifaceCard.dragging{
+  cursor: grabbing;
+  transform: scale(1.03) !important;
+  box-shadow: 0 16px 36px rgba(0,0,0,.22) !important;
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border)) !important;
+}
+.ifaceCard.drop-left{ box-shadow: inset 4px 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent), 0 6px 22px rgba(0,0,0,.15); }
+.ifaceCard.drop-right{ box-shadow: inset -4px 0 0 0 color-mix(in srgb, var(--accent) 55%, transparent), 0 6px 22px rgba(0,0,0,.15); }
+
+
+/* --- Drag armed highlight (green) --- */
+.ifaceCard.armed{
+  background: color-mix(in srgb, var(--ok, #16a34a) 16%, var(--card));
+  border-color: color-mix(in srgb, var(--ok, #16a34a) 55%, var(--border));
+  box-shadow: 0 10px 26px rgba(22,163,74,.18);
+  transform: scale(1.015);
+}
+/* Also use green while dragging */
+.ifaceCard.dragging{
+  cursor: grabbing;
+  transform: scale(1.03) !important;
+  box-shadow: 0 16px 36px rgba(22,163,74,.22) !important;
+  border-color: color-mix(in srgb, var(--ok, #16a34a) 55%, var(--border)) !important;
+  background: color-mix(in srgb, var(--ok, #16a34a) 10%, var(--card)) !important;
+}
+/* Drop indicators remain as before, but tint to green */
+.ifaceCard.drop-left{ box-shadow: inset 4px 0 0 0 color-mix(in srgb, var(--ok, #16a34a) 55%, transparent), 0 6px 22px rgba(0,0,0,.15); }
+.ifaceCard.drop-right{ box-shadow: inset -4px 0 0 0 color-mix(in srgb, var(--ok, #16a34a) 55%, transparent), 0 6px 22px rgba(0,0,0,.15); }

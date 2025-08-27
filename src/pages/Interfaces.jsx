@@ -12,6 +12,89 @@ const textify = (x) => {
 
 export default function Interfaces(){
   const cfg = loadConfig();
+  // --- Custom order (persisted) & drag state ---
+  const [dragId, setDragId] = React.useState(null);
+  const [dragOver, setDragOver] = React.useState({ catId: null, index: -1, side: 'right' });
+  const [armDragId, setArmDragId] = React.useState(null); // long-press armed id
+  const pressRef = React.useRef(null);
+
+  const getOrder = () => {
+    try { return JSON.parse(localStorage.getItem('tcf_iface_order') || '[]'); } catch { return []; }
+  };
+  const setOrder = (arr) => {
+    try { localStorage.setItem('tcf_iface_order', JSON.stringify(arr)); } catch {}
+    try { window.dispatchEvent(new CustomEvent('tcf-interfaces-order-changed')); } catch {}
+  };
+
+  // Order-aware list of interfaces
+  const allIfaces = React.useMemo(() => {
+    const order = getOrder();
+    const byId = new Map((cfg.interfaces || []).map(i => [i.id, i]));
+    const ordered = [];
+    order.forEach(id => { if (byId.has(id)) { ordered.push(byId.get(id)); byId.delete(id); } });
+    // append missing
+    byId.forEach(v => ordered.push(v));
+    return ordered;
+  }, [cfg.interfaces]);
+
+  // Group by category (respecting 'allIfaces' order)
+  const byCat = new Map();
+  (cfg.categories || []).forEach(c => byCat.set(c.id, { cat: c, items: [] }));
+  allIfaces.forEach(it => {
+    const key = it.categoryId || (cfg.categories?.[0]?.id || 'default');
+    if (!byCat.has(key)) byCat.set(key, { cat: { id: key, name: key }, items: [] });
+    byCat.get(key).items.push(it);
+  });
+
+  // Long-press handlers to enable native drag on a tile
+  const armDrag = (id) => {
+    clearTimeout(pressRef.current);
+    pressRef.current = setTimeout(() => setArmDragId(id), 180);
+  };
+  const disarmDrag = () => { clearTimeout(pressRef.current); setArmDragId(null); };
+
+  const handleDragStart = (id) => { setDragId(id); };
+  const handleDragEnd = () => { setDragId(null); setDragOver({ catId:null, index:-1, side:'right' }); setArmDragId(null); };
+
+  const handleDragEnter = (catId, index, side) => {
+    if (!dragId) return;
+    setDragOver({ catId, index, side });
+  };
+  const handleDragOver = (e) => { if (dragId) { try { e.preventDefault(); } catch {} } };
+
+  const commitDrop = () => {
+    if (!dragId || !dragOver.catId || dragOver.index < 0) return;
+    // build new order: iterate categories in cfg order, but replace the drag target category item order
+    const cur = allIfaces.slice();
+    const fromIdx = cur.findIndex(x => x.id === dragId);
+    if (fromIdx === -1) return;
+    const item = cur.splice(fromIdx, 1)[0];
+
+    // Restrict reordering within the same category
+    const defCat = (cfg.categories?.[0]?.id || 'default');
+    const dragCat = (item.categoryId || defCat);
+    if (dragCat !== dragOver.catId) { return; }
+
+    // find indices within the target category among current list
+    const catId = dragOver.catId;
+    const targetCatItems = cur.filter(x => (x.categoryId || (cfg.categories?.[0]?.id || 'default')) === catId);
+    // compute insertion relative to target tile in that category
+    let beforeIdx = targetCatItems.findIndex(x => x.id === (byCat.get(catId)?.items?.[dragOver.index]?.id));
+    if (beforeIdx < 0) beforeIdx = targetCatItems.length - 1;
+    // locate that target tile's absolute index in cur
+    let targetAbs = -1; let count = -1;
+    for (let k=0; k<cur.length; k++) {
+      if ((cur[k].categoryId || (cfg.categories?.[0]?.id || 'default')) === catId) {
+        count++;
+        if (count === beforeIdx) { targetAbs = k; break; }
+      }
+    }
+    let insertPos = targetAbs >= 0 ? (targetAbs + (dragOver.side === 'right' ? 1 : 0)) : cur.length;
+    cur.splice(insertPos, 0, item);
+    setOrder(cur.map(x => x.id));
+    try { setArmDragId(null); } catch {}
+  };
+    
   
   const [valTick, setValTick] = React.useState(0);
   React.useEffect(() => {
@@ -37,13 +120,6 @@ export default function Interfaces(){
     return used;
   }, [cfg, valTick]);
 
-const byCat = new Map();
-  (cfg.categories || []).forEach(c => byCat.set(c.id, { cat:c, items: [] }));
-  (cfg.interfaces || []).forEach(it => {
-    const key = it.categoryId || (cfg.categories && cfg.categories[0] ? cfg.categories[0].id : 'default');
-    if (!byCat.has(key)) byCat.set(key, { cat: { id: key, name: key }, items: [] });
-    byCat.get(key).items.push(it);
-  });
   return (
     <main className="wrap">
       <section className="card">
@@ -52,9 +128,9 @@ const byCat = new Map();
         {[...byCat.values()].map(group => (
           <div key={group.cat.id} style={{marginTop:10}}>
             <div className="catTitle">{group.cat.name}</div>
-            <div className="ifaceGrid">
-              {group.items.map(it => (
-                <Link key={it.id} className="ifaceCard" data-name={it.name} data-type={String(it.type || it.typeCode || "")} style={usedIfaceIds.has(it.id) ? { boxShadow: 'inset 0 0 0 2px #2ecc71', borderRadius: 12 } : undefined} to={`/iface/${it.id}`}>
+            <div className={"ifaceGrid" + (dragId ? ' drag-active' : '')} onDragOver={handleDragOver} onDrop={commitDrop}>
+              {group.items.map((it, i) => (
+                <Link key={it.id} className={"ifaceCard" + (armDragId===it.id ? " armed" : "") + (dragId===it.id ? " dragging" : "") + (dragOver.catId===group.cat.id && dragOver.index===i ? (dragOver.side==="left"?" drop-left":" drop-right") : "")} data-name={it.name} data-type={String(it.type || it.typeCode || "")} style={usedIfaceIds.has(it.id) ? { boxShadow: 'inset 0 0 0 2px #2ecc71', borderRadius: 12 } : undefined} to={`/iface/${it.id}`} draggable={armDragId===it.id} onMouseDown={(e)=>armDrag(it.id)} onMouseUp={disarmDrag} onMouseLeave={disarmDrag} onTouchStart={(e)=>armDrag(it.id)} onTouchEnd={disarmDrag} onDragStart={(e)=>{handleDragStart(it.id);}} onDragEnd={(e)=>{handleDragEnd();}} onDragEnter={(e)=>{ const r=e.currentTarget.getBoundingClientRect(); const side=(e.clientX<(r.left+r.width/2))?'left':'right'; handleDragEnter(group.cat.id, i, side); }} onClick={(e)=>{ if(dragId){ e.preventDefault(); e.stopPropagation(); } }}>
                   <div className="ifaceTitle">
                     {/* subtle note icon */}
                     <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">

@@ -232,7 +232,7 @@ export default function Admin({ role }){
   const [importMode, setImportMode] = useState('add') // add | overwrite
   const fileInputRef = useRef(null);
   const backupFileRef = useRef(null);
-  const [sortKey, setSortKey] = useState('name')
+  const [sortKey, setSortKey] = useState(() => (localStorage.getItem('tcf_iface_order') ? 'custom' : 'name'))
   const [sortDir, setSortDir] = useState('asc')
   const rowFileRef = useRef(null);
   const [pendingImportId, setPendingImportId] = useState(null)
@@ -294,6 +294,14 @@ const sortedInterfaces = useMemo(() => {
     const arr = filteredInterfaces.slice()
     const getCat = id => cfg.categories.find(c => c.id === id)?.name || id
     arr.sort((a,b) => {
+      if (sortKey === 'custom') {
+        try {
+          const ord = JSON.parse(localStorage.getItem('tcf_iface_order')||'[]');
+          const pos = (id) => { const i = ord.indexOf(id); return i<0 ? 1e9 : i; };
+          return pos(a.id) - pos(b.id);
+        } catch { return 0; }
+      }
+
       let av, bv
       if (sortKey === 'name') { av=a.name.toLowerCase(); bv=b.name.toLowerCase() }
       else if (sortKey === 'category') { av=getCat(a.categoryId).toLowerCase(); bv=getCat(b.categoryId).toLowerCase() }
