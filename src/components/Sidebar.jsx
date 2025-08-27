@@ -9,6 +9,7 @@ const textify = (x) => {
   return typeof x === 'string' ? x : String(x);
 };
 import { loadConfig, loadValues } from '../utils.js';
+import { loadTemplates, deleteTemplate, exportTemplatesBlob, importTemplatesText, applyTemplate, renameTemplate } from '../utils.templates.js';
 import {
   loadWorkspaceProjects, saveWorkspaceProjects,
   newWorkspaceId, snapshotWorkspace, applyWorkspace,
@@ -41,6 +42,16 @@ export default function Sidebar(){
   };
   const LS_MAX = 5 * 1024 * 1024; // ~5MB
   const [lsBytes, setLsBytes] = useState(0);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [templates, setTemplates] = useState(() => loadTemplates());
+  const [editingTplId, setEditingTplId] = useState(null);
+  const [editingName, setEditingName] = useState('');
+  useEffect(() => {
+    const onChange = () => setTemplates(loadTemplates());
+    window.addEventListener('tcf-templates-changed', onChange);
+    return () => window.removeEventListener('tcf-templates-changed', onChange);
+  }, []);
+
 
 useEffect(() => {
   const schedule = (fn) => {
@@ -339,6 +350,54 @@ React.useEffect(() => {
           </button>
         </div>
       )}
+
+      
+      <div className={`s-cat s-templates ${templatesOpen ? 'open' : 'closed'}`}>
+        <div className="s-cat-head" onClick={()=>setTemplatesOpen(!templatesOpen)}>
+          <span className="s-item-icon"><Icon.Save /></span>
+          <span className="s-cat-title">{t('templatesMenu') || t('templates') || 'Schematy'}</span>
+          <span className="chev">{templatesOpen ? '▾' : '▸'}</span>
+        </div>
+        {templatesOpen && (
+          <div className="s-list">
+            <div className="s-actions">
+              <label className="s-item" style={{display:'flex',alignItems:'center',gap:8,justifyContent:'flex-start', cursor:'pointer'}}>
+                <input type="file" accept="application/json" style={{display:'none'}} onChange={async (e)=>{ const f=e.target.files?.[0]; e.target.value=''; if(!f) return; try{ const tx=await f.text(); if(importTemplatesText(tx)){ alert(t('importOk')||'Import completed'); setTemplates(loadTemplates()); } else { alert(t('importInvalid')||'Invalid file'); } } catch { alert(t('importInvalid')||'Invalid file'); } }} />
+                <span className="s-item-icon"><Icon.Import /></span>
+                <span className="s-item-title">{t('importTemplates') || 'Importuj schematy'}</span>
+              </label>
+              <button className="s-item" onClick={()=>{ try{ const b=exportTemplatesBlob(); const url=URL.createObjectURL(b); const a=document.createElement('a'); a.href=url; const ts=(new Date()).toISOString().replace(/[:.]/g,'-'); a.download=`templates_${ts}.json`; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();}, 1000); } catch(e){ console.error(e);} }} style={{display:'flex',alignItems:'center',gap:8,justifyContent:'flex-start'}}>
+                <span className="s-item-icon"><Icon.Export /></span>
+                <span className="s-item-title">{t('exportTemplates') || 'Eksportuj schematy'}</span>
+              </button>
+            </div>
+            <div className="s-list-items">
+              {(templates && templates.length) ? templates.map((tpl) => (
+                <div key={tpl.id} className="s-item tpl-row"
+                     style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                  <div className="tpl-title" style={{minWidth:0,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap', cursor:'pointer'}} title={tpl.name} onClick={()=>applyTemplate(tpl.id)}>
+                    {editingTplId===tpl.id ? (
+                      <input className="tpl-rename-input" autoFocus value={editingName} onChange={e=>setEditingName(e.target.value)}
+                             onKeyDown={(e)=>{ if (e.key==='Enter') { renameTemplate(editingTplId, editingName||''); setTemplates(loadTemplates()); setEditingTplId(null); setEditingName(''); } else if (e.key==='Escape') { setEditingTplId(null); setEditingName(''); } }}
+                             onBlur={()=>{ renameTemplate(editingTplId, editingName||''); setTemplates(loadTemplates()); setEditingTplId(null); setEditingName(''); }}
+                             style={{width:'100%'}} />
+                    ) : tpl.name}
+                  </div>
+                  <button className="tpl-edit" onClick={(e)=>{ e.stopPropagation(); setEditingTplId(tpl.id); setEditingName(tpl.name||''); }} title={t('renameTemplate') || 'Zmień nazwę'}>✎</button>
+                  <button className="tpl-del"
+                          onClick={(e)=>{ e.stopPropagation(); if (confirm((t('confirmDeleteTemplate')||'Delete template "{name}"?').replace('{name}', tpl.name))) { deleteTemplate(tpl.id); setTemplates(loadTemplates()); } }}
+                          title="Delete" style={{color:'inherit'}}>
+                    ×
+                  </button>
+                </div>
+              )) : (
+                <div className="s-item is-empty">{t('templatesEmpty') || 'Brak schematów'}</div>
+              )}
+            </div>
+
+          </div>
+        )}
+      </div>
 
       <div className="ls-usage">
         {fmtMB(lsBytes)}MB / {Math.round(LS_MAX/(1024*1024))}MB

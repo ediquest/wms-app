@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState , useRef, useCallback} from 'react'
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
 import { loadConfig, saveConfig, loadValues, saveValues, padToLen, timestamp, loadProjects, saveProjects, snapshotProject, applyProject } from '../utils.js';
 import { t } from '../i18n.js';
+import { saveTemplate as tplSave } from '../utils.templates.js';
 import ScrollTabs from '../components/ScrollTabs.jsx';
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
 import { segmentText } from '../segmentation.js';
@@ -93,7 +94,9 @@ export default function Home() {
   // State
   const [cfg, setCfg] = useState(loadConfig());
   const [dockOpen, setDockOpen] = useState(true);
-  const [iface, setIface] = useState(null);
+  
+  const [templFlash, setTemplFlash] = useState(false);
+const [iface, setIface] = useState(null);
   const [valsMap, setValsMap] = useState(loadValues());
   const [values, setValues] = useState([]);
   const [activeSec, setActiveSec] = useState(0);
@@ -720,6 +723,29 @@ return () => clearTimeout(timer);
     }
     return { ok:true };
   };
+  const saveAsTemplate = async () => {
+    const g = guard();
+    if (!g.ok) { alert(g.reason==='required'? t('notAllRequired') : t('invalidNumeric')); return; }
+    const name = window.prompt(t('templateNamePrompt') || 'Template name:');
+    if (!name) return;
+    const isMulti = !!combineAll;
+    const idList = isMulti ? (combineOrder || []) : [iface?.id].filter(Boolean);
+    const byId = {};
+    try {
+      for (const id of idList) {
+        const vals = (valsMap && valsMap[id]) ? valsMap[id] : [];
+        const itf = (cfg?.interfaces || []).find(i => i.id === id) || {};
+        const incl = Array.isArray(itf.includedSections) ? itf.includedSections : (Array.isArray(itf.sections) ? itf.sections.map(()=>false) : []);
+        const gen = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(id)) || '[]') || [];
+        byId[id] = { values: vals, includedSections: incl, genTabs: gen };
+      }
+    } catch {}
+    const payload = { text: finalText, multi: isMulti, order: idList, snapshot: byId, createdAt: Date.now() };
+    tplSave(name, payload);
+    setTemplFlash(false); try { void document?.querySelector('.result-area')?.offsetWidth; } catch {}
+    setTemplFlash(true); setTimeout(()=>setTemplFlash(false), 900);
+  };
+
 
   const copyResult = async () => {
     const g = guard();
@@ -1153,7 +1179,7 @@ if (!iface) return null;
           <div className="inner">
             <label className="block">
               <span>{t('result')}:</span>
-              <textarea className={'result-area' + (copiedFlash ? ' copied-flash' : '')} readOnly={!segmentMode} value={segmentMode ? segmentTextStr : finalText} onChange={e => segmentMode && setSegmentTextStr(e.target.value)} style={{height: dockH, transition: dockAnim ? 'height 180ms ease' : 'none', resize: 'none', outline: segmentMode ? '2px solid var(--ok, #16a34a)' : 'none', boxShadow: segmentMode ? '0 0 0 2px rgba(22,163,74,.25) inset' : 'none'}} />
+              <textarea className={'result-area' + (templFlash ? ' template-flash' : '') + (copiedFlash ? ' copied-flash' : '')} readOnly={!segmentMode} value={segmentMode ? segmentTextStr : finalText} onChange={e => segmentMode && setSegmentTextStr(e.target.value)} style={{height: dockH, transition: dockAnim ? 'height 180ms ease' : 'none', resize: 'none', outline: segmentMode ? '2px solid var(--ok, #16a34a)' : 'none', boxShadow: segmentMode ? '0 0 0 2px rgba(22,163,74,.25) inset' : 'none'}} />
             </label>
             
             
@@ -1287,6 +1313,7 @@ if (!iface) return null;
 <div className="actions" style={{justifyContent:'flex-end'}}>
               <button onClick={copyResult}>{t('copy')}</button>
               <button onClick={downloadResult}>{t('download')}</button>
+                          <button onClick={saveAsTemplate}>{t('saveAsTemplate') || 'Zapisz jako schemat'}</button>
             </div>
           </div>
         </div>

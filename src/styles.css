@@ -976,3 +976,97 @@ textarea::-webkit-scrollbar-corner{ background:var(--sb-corner); }
 /* Drop indicators remain as before, but tint to green */
 .ifaceCard.drop-left{ transform: translateX(-6px); box-shadow: inset 4px 0 0 0 color-mix(in srgb, var(--ok, #16a34a) 55%, transparent), 0 6px 22px rgba(0,0,0,.15); }
 .ifaceCard.drop-right{ transform: translateX(6px); box-shadow: inset -4px 0 0 0 color-mix(in srgb, var(--ok, #16a34a) 55%, transparent), 0 6px 22px rgba(0,0,0,.15); }
+
+
+/* === Templates (consolidated) — hover spójny z Import/Eksport; czerwony na X === */
+/* Bazujemy na .s-item:hover zdefiniowanym wyżej – tpl-row ma też klasę .s-item */
+/* Stabilny box i brak „skoków” */
+.sidebar .s-templates .tpl-row{
+  box-sizing: border-box;
+  min-height: 34px;
+}
+
+/* Stały rozmiar kontrolek po prawej */
+.sidebar .s-templates .tpl-row .tpl-edit,
+.sidebar .s-templates .tpl-row .tpl-del{
+  width: 22px; min-width: 22px; height: 22px;
+  padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  line-height: 1; font-size: 13px; font-weight: 400;
+  border-radius: 6px;
+  background: transparent; border: 1px solid transparent;
+}
+.sidebar .s-templates .tpl-row .tpl-edit:hover,
+.sidebar .s-templates .tpl-row .tpl-del:hover{
+  background: transparent; border-color: transparent;
+}
+
+/* Tytuł bez pogrubiania na hover (bez zmiany wysokości linii) */
+.sidebar .s-templates .tpl-row .tpl-title{ font-weight: inherit; }
+
+/* Czerwony stan TYLKO przy najechaniu na „×” – przebija zwykły hover */
+@supports(selector(:has(*))){
+  .sidebar .s-templates .tpl-row:has(.tpl-del:hover){
+    background: color-mix(in srgb, var(--danger, #ef4444) 16%, transparent) !important;
+    border-color: color-mix(in srgb, var(--danger, #ef4444) 30%, var(--border)) !important;
+    color: color-mix(in srgb, var(--danger, #ef4444) 85%, var(--text, #e8ecff)) !important;
+  }
+  .sidebar .s-templates .tpl-row:has(.tpl-del:hover) .s-item-title,
+  .sidebar .s-templates .tpl-row:has(.tpl-del:hover) .chev,
+  .sidebar .s-templates .tpl-row:has(.tpl-del:hover) .badge{
+    color: inherit !important; opacity: 1 !important;
+  }
+}
+
+/* Edycja inline – bez białego tła w ciemnych motywach */
+.sidebar .s-templates .tpl-rename-input{
+  width: 100%;
+  background: var(--inputBg, color-mix(in srgb, var(--card, #0b1026) 92%, #0000));
+  color: var(--inputText, var(--text, #e8ecff));
+  border: 1px solid var(--btnBorder, var(--border, #1b2447));
+  border-radius: 6px;
+  padding: 4px 6px;
+  outline: none;
+  box-shadow: none;
+  caret-color: var(--text, #e8ecff);
+}
+.sidebar .s-templates .tpl-rename-input::placeholder{
+  color: color-mix(in srgb, var(--text, #e8ecff) 50%, transparent);
+}
+.sidebar .s-templates .tpl-rename-input:focus{
+  border-color: color-mix(in srgb, var(--accent, #2856e6) 55%, var(--btnBorder, #1b2447));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #2856e6) 25%, transparent);
+  background: var(--inputBg, color-mix(in srgb, var(--card, #0b1026) 88%, #0000));
+}
+/* === end Templates (consolidated) === */
+
+
+
+/* === Templates: darker inline rename background in dark themes === */
+@media (prefers-color-scheme: dark) {
+  .sidebar .s-templates input.tpl-rename-input,
+  .sidebar .s-templates textarea.tpl-rename-input{
+    background: var(--card, #0b1026) !important;
+    color: var(--text, #e8ecff) !important;
+    border-color: var(--border, #1b2447) !important;
+  }
+  .sidebar .s-templates input.tpl-rename-input:focus,
+  .sidebar .s-templates textarea.tpl-rename-input:focus{
+    background: var(--card, #0b1026) !important;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #2856e6) 22%, transparent);
+    border-color: color-mix(in srgb, var(--accent, #2856e6) 45%, var(--border, #1b2447)) !important;
+  }
+}
+
+
+/* === Templates: inline rename themed background (class-based) === */
+.sidebar .s-templates input.tpl-rename-input,
+.sidebar .s-templates textarea.tpl-rename-input{
+  background: var(--card, #0b1026);
+  color: var(--text, #e8ecff);
+  border-color: var(--border, #1b2447);
+}
+.sidebar .s-templates input.tpl-rename-input:focus,
+.sidebar .s-templates textarea.tpl-rename-input:focus{
+  background: var(--card, #0b1026);
+}
