@@ -4,6 +4,7 @@ import { loadConfig, saveConfig, loadValues, saveValues, padToLen, timestamp, lo
 import { t } from '../i18n.js';
 import ScrollTabs from '../components/ScrollTabs.jsx';
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
+import { segmentText } from '../segmentation.js';
 
 export default function Home() {
   // Router info (declare ONCE inside the component)
@@ -35,6 +36,11 @@ export default function Home() {
   useEffect(() => { try { localStorage.setItem('tcf_json_min', jsonMinified ? '1' : '0'); } catch {} }, [jsonMinified]);
   // JSON array/object toggle
   const [jsonArray, setJsonArray] = useState(() => { try { const v = localStorage.getItem('tcf_json_array'); return v == null ? true : v === '1'; } catch { return true; } });
+
+  // --- Segmentation state ---
+  const [segmentMode, setSegmentMode] = useState(false);
+  const [segmentTextStr, setSegmentTextStr] = useState('');
+
   useEffect(() => { try { localStorage.setItem('tcf_json_array', jsonArray ? '1' : '0'); } catch {} }, [jsonArray]);
 
 
@@ -826,7 +832,116 @@ const clearSection = () => {
     };
   }, [id]);
 
-  if (!iface) return null;
+  
+  // === SEGMENTATION HELPERS ===
+  function anyDataPresent() {
+    try {
+      const vals = valsMap || {};
+      const hasVals = (cfg?.interfaces || []).some(it => {
+        const arr = vals[it.id] || [];
+        return Array.isArray(arr) && arr.some(v => String(v ?? '').trim() !== '');
+      });
+      if (hasVals) return true;
+      const hasTabs = (cfg?.interfaces || []).some(it => {
+        try { const g = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(it.id)) || '[]') || []; return Array.isArray(g) && g.length > 0; } catch { return false; }
+      });
+      if (hasTabs) return true;
+      const hasOverlays = (cfg?.interfaces || []).some(it => {
+        const anyColor = (it.sectionColors || []).some(c => String(c||'').trim() !== '');
+        const anyIncl = (it.includedSections || []).some(Boolean);
+        return anyColor || anyIncl;
+      });
+      return hasOverlays;
+    } catch { return false; }
+  }
+
+  function globalWipeAll() {
+    try {
+      const all = (cfg?.interfaces || []);
+      // wipe values + tabs
+      const nextVals = {};
+      for (const it of all) {
+        nextVals[it.id] = Array.from({ length: (it.labels?.length || 0) }, () => '');
+        try { localStorage.removeItem('tcf_genTabs_' + String(it.id)); } catch {}
+        try { localStorage.removeItem('tcf_genTabs_active_' + String(it.id)); } catch {}
+      }
+      setValsMap(nextVals);
+      saveValues(nextVals);
+      // reset overlays
+      const newCfg = {
+        ...cfg,
+        interfaces: all.map(it => {
+          const n = (it.sections?.length || 0);
+          return {
+            ...it,
+            includedSections: Array.from({ length: n }, () => false),
+            sectionColors: Array.from({ length: n }, () => ''),
+          };
+        }),
+      };
+      setCfg(newCfg);
+      saveConfig(newCfg);
+      // close project if opened
+      try { localStorage.removeItem('tcf_current_project'); } catch {}
+      try { window.dispatchEvent(new Event('tcf-project-changed')); } catch {}
+      // UI resets
+      try { bumpGenTabs?.(); } catch {}
+      setActiveSec(0);
+      setColorPicker(null);
+    } catch (e) { console.warn('globalWipeAll error', e); }
+  }
+
+  function onToggleSegmentation() {
+    if (!segmentMode) {
+      // turning ON
+      if (anyDataPresent()) {
+        const msg = (t('segConfirm') || 'Wykryto istniejące dane. Ta opcja wyczyści cały generator. Kontynuować?');
+        if (!(typeof window !== 'undefined' && window.confirm && window.confirm(msg))) return;
+        globalWipeAll();
+      }
+      setSegmentTextStr('');
+      setSegmentMode(true);
+      try { if (!dockOpen) setDockOpen(true); } catch {}
+    } else {
+      // turning OFF -> only clear textarea
+      setSegmentTextStr('');
+      setSegmentMode(false);
+    }
+  }
+
+  function segmentRun() {
+    try{
+      const text = String(segmentTextStr || '');
+      const { valsMap: nextVals, tabsById, readCount, badLines, involvedIfaceIds } = segmentText(text, cfg, iface, valsMap);
+      // persist values
+      setValsMap(nextVals);
+      saveValues(nextVals);
+      // persist tabs per iface
+      try {
+        for (const [id, list] of tabsById.entries()) {
+          const key = 'tcf_genTabs_' + String(id);
+          localStorage.setItem(key, JSON.stringify(list));
+          try { localStorage.removeItem('tcf_genTabs_active_' + String(id)); } catch {}
+        }
+      } catch {}
+      try { bumpGenTabs?.(); } catch {}
+      if (Array.isArray(involvedIfaceIds) && involvedIfaceIds.length > 1) {
+        try { setCombineAll(true); } catch {}
+        try { setCombineOrder(involvedIfaceIds); } catch {}
+      }
+      const invalidCount = badLines.length;
+      const msg = (t('segSummary') || 'Podsumowanie') + ':\n' +
+                  (t('segRead') || 'Odczytane linie') + ': ' + String(readCount) + '\n' +
+                  (t('segBad') || 'Błędne linie') + ': ' + String(invalidCount) + (invalidCount ? ('\n- ' + badLines.join('\n- ')) : '');
+      try { alert(msg); } catch {}
+      setSegmentTextStr('');
+      setSegmentMode(false);
+    } catch(e) {
+      console.error('segmentRun error', e);
+      try { alert('Segmentacja nie powiodła się: ' + (e?.message || e)); } catch {}
+    }
+  }
+if (!iface) return null;
 
   // Indices ordering & defaults first
   const indicesInSec = iface.fieldSections.map((s, i) => ({ s, i })).filter(o => o.s === activeSec).map(o => o.i);
@@ -985,7 +1100,7 @@ const clearSection = () => {
           <div className="inner">
             <label className="block">
               <span>{t('result')}:</span>
-              <textarea readOnly value={finalText} style={{height: dockH, transition: dockAnim ? "height 180ms ease" : "none", resize: "none"}} />
+              <textarea readOnly={!segmentMode} value={segmentMode ? segmentTextStr : finalText} onChange={e => segmentMode && setSegmentTextStr(e.target.value)} style={{height: dockH, transition: dockAnim ? 'height 180ms ease' : 'none', resize: 'none', outline: segmentMode ? '2px solid var(--ok, #16a34a)' : 'none', boxShadow: segmentMode ? '0 0 0 2px rgba(22,163,74,.25) inset' : 'none'}} />
             </label>
             
             
@@ -1095,6 +1210,27 @@ const clearSection = () => {
               )}
             </div>
         
+
+              <div style={{ marginLeft:'auto', display:'inline-flex', gap:8 }}>
+                <button
+                  className="combine-tile"
+                  style={{ background: segmentMode ? 'var(--ok, #16a34a)' : undefined, color: segmentMode ? '#fff' : undefined, cursor:'pointer' }}
+                  onClick={onToggleSegmentation}
+                  title={t('segTooltip') || 'Wklej wynik i zsegmentuj do pól'}
+                >
+                  <span className="combine-tile-title">{t('segmentation') || 'Segmentacja'}</span>
+                </button>
+                {segmentMode ? (
+                  <button
+                    className="combine-tile"
+                    style={{ background: 'var(--ok, #16a34a)', color:'#fff', cursor:'pointer' }}
+                    onClick={segmentRun}
+                    title={t('segRunTip') || 'Uruchom segmentację bieżącego tekstu'}
+                  >
+                    <span className="combine-tile-title">{t('segRun') || 'Segmentuj'}</span>
+                  </button>
+                ) : null}
+              </div>
 <div className="actions" style={{justifyContent:'flex-end'}}>
               <button onClick={copyResult}>{t('copy')}</button>
               <button onClick={downloadResult}>{t('download')}</button>
