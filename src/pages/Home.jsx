@@ -40,6 +40,7 @@ export default function Home() {
   // --- Segmentation state ---
   const [segmentMode, setSegmentMode] = useState(false);
   const [segmentTextStr, setSegmentTextStr] = useState('');
+  const [copiedFlash, setCopiedFlash] = useState(false);
 
   useEffect(() => { try { localStorage.setItem('tcf_json_array', jsonArray ? '1' : '0'); } catch {} }, [jsonArray]);
 
@@ -723,8 +724,16 @@ return () => clearTimeout(timer);
   const copyResult = async () => {
     const g = guard();
     if (!g.ok) { alert(g.reason==='required'? t('notAllRequired') : t('invalidNumeric')); return; }
-    try { await navigator.clipboard.writeText(finalText); }
-    catch { window.prompt('Skopiuj ręcznie:', finalText); }
+    try {
+      await navigator.clipboard.writeText(finalText);
+      setCopiedFlash(false); // reset to allow retrigger
+      // Force reflow so animation restarts even if class was recently removed
+      try { void document?.querySelector('.result-area')?.offsetWidth; } catch {}
+      setCopiedFlash(true);
+      setTimeout(() => setCopiedFlash(false), 900);
+    } catch {
+      window.prompt('Skopiuj ręcznie:', finalText);
+    }
   };
   const downloadResult = async () => {
     const g = guard();
@@ -1144,7 +1153,7 @@ if (!iface) return null;
           <div className="inner">
             <label className="block">
               <span>{t('result')}:</span>
-              <textarea readOnly={!segmentMode} value={segmentMode ? segmentTextStr : finalText} onChange={e => segmentMode && setSegmentTextStr(e.target.value)} style={{height: dockH, transition: dockAnim ? 'height 180ms ease' : 'none', resize: 'none', outline: segmentMode ? '2px solid var(--ok, #16a34a)' : 'none', boxShadow: segmentMode ? '0 0 0 2px rgba(22,163,74,.25) inset' : 'none'}} />
+              <textarea className={'result-area' + (copiedFlash ? ' copied-flash' : '')} readOnly={!segmentMode} value={segmentMode ? segmentTextStr : finalText} onChange={e => segmentMode && setSegmentTextStr(e.target.value)} style={{height: dockH, transition: dockAnim ? 'height 180ms ease' : 'none', resize: 'none', outline: segmentMode ? '2px solid var(--ok, #16a34a)' : 'none', boxShadow: segmentMode ? '0 0 0 2px rgba(22,163,74,.25) inset' : 'none'}} />
             </label>
             
             
@@ -1255,23 +1264,23 @@ if (!iface) return null;
             </div>
         
 
-              <div style={{ marginLeft:'auto', display:'inline-flex', gap:8 }}>
+              <div className="seg-btns" style={{ display:'inline-flex', gap:8 }}>
                 <button
-                  className="combine-tile"
+                  className="combine-tile button-action"
                   style={{ background: segmentMode ? 'var(--ok, #16a34a)' : undefined, color: segmentMode ? '#fff' : undefined, cursor:'pointer' }}
                   onClick={onToggleSegmentation}
                   title={t('segTooltip') || 'Wklej wynik i zsegmentuj do pól'}
                 >
-                  <span className="combine-tile-title">{t('segmentation') || 'Segmentacja'}</span>
+                  <span className="icon-wrap" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M20 4L8.5 12"></path><path d="M8.5 12L20 20"></path><path d="M8.5 12H14"></path></svg></span><span className="combine-tile-title">{t('segmentation') || 'Segmentacja'}</span>
                 </button>
                 {segmentMode ? (
                   <button
-                    className="combine-tile"
+                    className="combine-tile button-action"
                     style={{ background: 'var(--ok, #16a34a)', color:'#fff', cursor:'pointer' }}
                     onClick={segmentRun}
                     title={t('segRunTip') || 'Uruchom segmentację bieżącego tekstu'}
                   >
-                    <span className="combine-tile-title">{t('segRun') || 'Segmentuj'}</span>
+                    <span className="icon-wrap" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg"><polygon points="6,4 20,12 6,20"/></svg></span><span className="combine-tile-title">{t('segRun') || 'Segmentuj'}</span>
                   </button>
                 ) : null}
               </div>
