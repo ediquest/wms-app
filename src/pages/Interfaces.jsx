@@ -17,6 +17,10 @@ export default function Interfaces(){
   const [dragOver, setDragOver] = React.useState({ catId: null, index: -1, side: 'right' });
   const [armDragId, setArmDragId] = React.useState(null); // long-press armed id
   const pressRef = React.useRef(null);
+  const isDownRef = React.useRef(false);
+  const startRef = React.useRef({ x:0, y:0, id:null, armed:false, el:null, down:false });
+  const ARM_DELAY = 170;
+  const MOVE_THRESHOLD = 6;
 
   const getOrder = () => {
     try { return JSON.parse(localStorage.getItem('tcf_iface_order') || '[]'); } catch { return []; }
@@ -47,20 +51,53 @@ export default function Interfaces(){
   });
 
   // Long-press handlers to enable native drag on a tile
-  const armDrag = (id) => {
+  const armDrag = (id, el) => {
     clearTimeout(pressRef.current);
-    pressRef.current = setTimeout(() => setArmDragId(id), 180);
+    startRef.current = { ...startRef.current, id, el, armed:false, down:true };
+    pressRef.current = setTimeout(() => {
+      if (!isDownRef.current || startRef.current.id !== id) return;
+      setArmDragId(id);
+      try { if (el) el.draggable = true; } catch {}
+      startRef.current.armed = true;
+    }, ARM_DELAY);
   };
-  const disarmDrag = () => { clearTimeout(pressRef.current); setArmDragId(null); };
+  const disarmDrag = () => {
+    clearTimeout(pressRef.current);
+    isDownRef.current = false;
+    try { if (startRef.current?.el) startRef.current.el.draggable = false; } catch {}
+    setArmDragId(null);
+    if (!dragId) startRef.current.armed = false;
+    startRef.current.down = false;
+  };
 
   const handleDragStart = (id) => { setDragId(id); };
-  const handleDragEnd = () => { setDragId(null); setDragOver({ catId:null, index:-1, side:'right' }); setArmDragId(null); };
+  const handleDragEnd = () => { setDragId(null); setDragOver({ catId:null, index:-1, side:'right' }); setArmDragId(null); isDownRef.current=false; startRef.current.down=false; };
 
   const handleDragEnter = (catId, index, side) => {
     if (!dragId) return;
     setDragOver({ catId, index, side });
   };
   const handleDragOver = (e) => { if (dragId) { try { e.preventDefault(); } catch {} } };
+  const onPointerDown = (id, el, e) => {
+    const p = ('touches' in e) ? e.touches[0] : e;
+    isDownRef.current = true;
+    startRef.current = { x:p.clientX, y:p.clientY, id, el, armed:false, down:true };
+    armDrag(id, el);
+  };
+  const onPointerMove = (id, el, e) => {
+    if (dragId) return;
+    if (!isDownRef.current || startRef.current.id !== id) return;
+    const p = ('touches' in e) ? (e.touches[0] || e.changedTouches[0]) : e;
+    if (!p) return;
+    const dx = Math.abs(p.clientX - startRef.current.x);
+    const dy = Math.abs(p.clientY - startRef.current.y);
+    if (!startRef.current.armed && (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD)) {
+      clearTimeout(pressRef.current);
+      setArmDragId(id);
+      try { if (el) el.draggable = true; } catch {}
+      startRef.current.armed = true;
+    }
+  };
 
   const commitDrop = () => {
     if (!dragId || !dragOver.catId || dragOver.index < 0) return;
@@ -68,12 +105,15 @@ export default function Interfaces(){
     const cur = allIfaces.slice();
     const fromIdx = cur.findIndex(x => x.id === dragId);
     if (fromIdx === -1) return;
+    // self-drop-guard: if target tile is the dragged tile, don't reorder
+    const targetIdMaybe = (byCat.get(dragOver.catId)?.items?.[dragOver.index]?.id);
+    if (targetIdMaybe === dragId) { handleDragEnd(); isDownRef.current=false; startRef.current.down=false; return; }
     const item = cur.splice(fromIdx, 1)[0];
 
     // Restrict reordering within the same category
     const defCat = (cfg.categories?.[0]?.id || 'default');
     const dragCat = (item.categoryId || defCat);
-    if (dragCat !== dragOver.catId) { return; }
+    if (dragCat !== dragOver.catId) { isDownRef.current=false; startRef.current.down=false; return; }
 
     // find indices within the target category among current list
     const catId = dragOver.catId;
@@ -90,6 +130,8 @@ export default function Interfaces(){
       }
     }
     let insertPos = targetAbs >= 0 ? (targetAbs + (dragOver.side === 'right' ? 1 : 0)) : cur.length;
+    if (insertPos > fromIdx) insertPos--; // account for removal shift
+    if (insertPos === fromIdx) { handleDragEnd(); isDownRef.current=false; startRef.current.down=false; return; }
     cur.splice(insertPos, 0, item);
     setOrder(cur.map(x => x.id));
     try { setArmDragId(null); } catch {}
@@ -130,7 +172,7 @@ export default function Interfaces(){
             <div className="catTitle">{group.cat.name}</div>
             <div className={"ifaceGrid" + (dragId ? ' drag-active' : '')} onDragOver={handleDragOver} onDrop={commitDrop}>
               {group.items.map((it, i) => (
-                <Link key={it.id} className={"ifaceCard" + (armDragId===it.id ? " armed" : "") + (dragId===it.id ? " dragging" : "") + (dragOver.catId===group.cat.id && dragOver.index===i ? (dragOver.side==="left"?" drop-left":" drop-right") : "")} data-name={it.name} data-type={String(it.type || it.typeCode || "")} style={usedIfaceIds.has(it.id) ? { boxShadow: 'inset 0 0 0 2px #2ecc71', borderRadius: 12 } : undefined} to={`/iface/${it.id}`} draggable={armDragId===it.id} onMouseDown={(e)=>armDrag(it.id)} onMouseUp={disarmDrag} onMouseLeave={disarmDrag} onTouchStart={(e)=>armDrag(it.id)} onTouchEnd={disarmDrag} onDragStart={(e)=>{handleDragStart(it.id);}} onDragEnd={(e)=>{handleDragEnd();}} onDragEnter={(e)=>{ const r=e.currentTarget.getBoundingClientRect(); const side=(e.clientX<(r.left+r.width/2))?'left':'right'; handleDragEnter(group.cat.id, i, side); }} onClick={(e)=>{ if(dragId){ e.preventDefault(); e.stopPropagation(); } }}>
+                <Link key={it.id} className={"ifaceCard" + (armDragId===it.id ? " armed" : "") + (dragId===it.id ? " dragging" : "") + (dragOver.catId===group.cat.id && dragOver.index===i ? (dragOver.side==="left"?" drop-left":" drop-right") : "")} data-name={it.name} data-type={String(it.type || it.typeCode || "")} style={usedIfaceIds.has(it.id) ? { boxShadow: 'inset 0 0 0 2px #2ecc71', borderRadius: 12 } : undefined} to={`/iface/${it.id}`} draggable={armDragId===it.id} onMouseDown={(e)=>onPointerDown(it.id, e.currentTarget, e)} onMouseUp={disarmDrag} onMouseMove={(e)=>onPointerMove(it.id, e.currentTarget, e)} onMouseLeave={(e)=>{ if(!dragId) disarmDrag(); }} onTouchStart={(e)=>onPointerDown(it.id, e.currentTarget, e)} onTouchMove={(e)=>onPointerMove(it.id, e.currentTarget, e)} onTouchEnd={disarmDrag} onTouchCancel={disarmDrag} onDragStart={(e)=>{ try { e.dataTransfer && e.dataTransfer.setData('text/plain', it.id); } catch{}; try { e.currentTarget.draggable = true; } catch{}; handleDragStart(it.id); }} onDragEnd={(e)=>{ try { e.currentTarget.draggable = false; } catch{}; handleDragEnd(); }} onDragEnter={(e)=>{ const r=e.currentTarget.getBoundingClientRect(); const side=(e.clientX<(r.left+r.width/2))?'left':'right'; handleDragEnter(group.cat.id, i, side); }} onClick={(e)=>{ if(dragId){ e.preventDefault(); e.stopPropagation(); } }}>
                   <div className="ifaceTitle">
                     {/* subtle note icon */}
                     <svg className="icon" viewBox="0 0 24 24" aria-hidden="true">
