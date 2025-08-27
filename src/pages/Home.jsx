@@ -20,21 +20,21 @@ export default function Home() {
   // Generated tabs change counter (textarea auto-refresh)
   const [genTabsVersion, setGenTabsVersion] = useState(0);
   const bumpGenTabs = React.useCallback(() => setGenTabsVersion(v => v + 1), []);
-  useEffect(() => { try { localStorage.setItem('tcf_csv_mode', csvMode ? '1' : '0'); } catch {} }, [csvMode]);
-  useEffect(() => { try { localStorage.setItem('tcf_csv_sep', csvSep || ';'); } catch {} }, [csvSep]);
+  useEffect(() => { try { localStorage.setItem('tcf_csv_mode', csvMode ? '1' : '0'); } catch (e) {} }, [csvMode]);
+  useEffect(() => { try { localStorage.setItem('tcf_csv_sep', csvSep || ';'); } catch (e) {} }, [csvSep]);
 
   const [csvHeader, setCsvHeader] = useState(() => { try { const v = localStorage.getItem('tcf_csv_header'); return v == null ? true : v === '1'; } catch { return true; } });
-  useEffect(() => { try { localStorage.setItem('tcf_csv_header', csvHeader ? '1' : '0'); } catch {} }, [csvHeader]);
+  useEffect(() => { try { localStorage.setItem('tcf_csv_header', csvHeader ? '1' : '0'); } catch (e) {} }, [csvHeader]);
 
   // JSON
   const [jsonMode, setJsonMode] = useState(() => { try { return localStorage.getItem('tcf_json_mode') === '1'; } catch { return false; } });
-  useEffect(() => { try { localStorage.setItem('tcf_json_mode', jsonMode ? '1' : '0'); } catch {} }, [jsonMode]);
+  useEffect(() => { try { localStorage.setItem('tcf_json_mode', jsonMode ? '1' : '0'); } catch (e) {} }, [jsonMode]);
 
   const [skipEmpty, setSkipEmpty] = useState(() => { try { return localStorage.getItem('tcf_skip_empty') === '1'; } catch { return false; } });
-  useEffect(() => { try { localStorage.setItem('tcf_skip_empty', skipEmpty ? '1' : '0'); } catch {} }, [skipEmpty]);
+  useEffect(() => { try { localStorage.setItem('tcf_skip_empty', skipEmpty ? '1' : '0'); } catch (e) {} }, [skipEmpty]);
 
   const [jsonMinified, setJsonMinified] = useState(() => { try { return localStorage.getItem('tcf_json_min') === '1'; } catch { return false; } });
-  useEffect(() => { try { localStorage.setItem('tcf_json_min', jsonMinified ? '1' : '0'); } catch {} }, [jsonMinified]);
+  useEffect(() => { try { localStorage.setItem('tcf_json_min', jsonMinified ? '1' : '0'); } catch (e) {} }, [jsonMinified]);
   // JSON array/object toggle
   const [jsonArray, setJsonArray] = useState(() => { try { const v = localStorage.getItem('tcf_json_array'); return v == null ? true : v === '1'; } catch { return true; } });
 
@@ -43,7 +43,7 @@ export default function Home() {
   const [segmentTextStr, setSegmentTextStr] = useState('');
   const [copiedFlash, setCopiedFlash] = useState(false);
 
-  useEffect(() => { try { localStorage.setItem('tcf_json_array', jsonArray ? '1' : '0'); } catch {} }, [jsonArray]);
+  useEffect(() => { try { localStorage.setItem('tcf_json_array', jsonArray ? '1' : '0'); } catch (e) {} }, [jsonArray]);
 
 
 
@@ -82,7 +82,7 @@ export default function Home() {
         try {
           queueMicrotask?.(() => window.dispatchEvent(new Event('tcf-values-changed')));
 
-        } catch {}
+        } catch (e) {}
       } else {
         console.warn('Project not found or failed to apply:', pid);
       }
@@ -108,7 +108,7 @@ const [iface, setIface] = useState(null);
   const [combineAll, setCombineAll] = useState(() => { try { return localStorage.getItem('tcf_combine_all') === '1'; } catch { return false; } });
   const [combineOrder, setCombineOrder] = useState(() => { try { return JSON.parse(localStorage.getItem('tcf_combine_order')||'[]')||[]; } catch { return []; } }); // array of interface IDs
 
-  useEffect(() => { try { localStorage.setItem('tcf_combine_all', combineAll ? '1' : '0'); } catch {} }, [combineAll]);
+  useEffect(() => { try { localStorage.setItem('tcf_combine_all', combineAll ? '1' : '0'); } catch (e) {} }, [combineAll]);
 
   // keep order in sync with current cfg (first-time populate or when interfaces change)
   useEffect(() => {
@@ -119,7 +119,7 @@ const [iface, setIface] = useState(null);
       return keep.concat(add);
     });
   }, [cfg?.interfaces?.length]);
-  useEffect(() => { try { localStorage.setItem('tcf_combine_order', JSON.stringify(combineOrder||[])); } catch {} }, [combineOrder]);
+  useEffect(() => { try { localStorage.setItem('tcf_combine_order', JSON.stringify(combineOrder||[])); } catch (e) {} }, [combineOrder]);
 
 
   // helper to compute length for arbitrary interface
@@ -162,7 +162,7 @@ const usedIds = useMemo(() => {
       if (Array.isArray(g) && g.length > 0) {
         return g.filter(t => t && Number(t.secIdx) === Number(sIx)).length;
       }
-    } catch {}
+    } catch (e) {}
     const vals = valsMap[itf.id] || values || [];
     if (idxs.some(i => String(vals[i] ?? '').trim() !== '')) return 1;
     const included = (Array.isArray(itf.includedSections) && itf.includedSections.length === (itf.sections?.length || 0))
@@ -254,12 +254,12 @@ const usedIds = useMemo(() => {
       if (ca != null) setCombineAll(ca === '1');
       const co = JSON.parse(localStorage.getItem(`tcf_${wsIdForPersist}_combine_order`)||'[]');
       if (Array.isArray(co) && co.length) setCombineOrder(co);
-    } catch {}
+    } catch (e) {}
   }, [wsIdForPersist]);
 
-  useEffect(() => { try { localStorage.setItem(`tcf_${wsIdForPersist}_dock_h`, String(Math.round(dockH))); } catch {} }, [dockH, wsIdForPersist]);
-  useEffect(() => { try { localStorage.setItem(`tcf_${wsIdForPersist}_combine_all`, combineAll ? '1':'0'); } catch {} }, [combineAll, wsIdForPersist]);
-  useEffect(() => { try { localStorage.setItem(`tcf_${wsIdForPersist}_combine_order`, JSON.stringify(combineOrder||[])); } catch {} }, [combineOrder, wsIdForPersist]);
+  useEffect(() => { try { localStorage.setItem(`tcf_${wsIdForPersist}_dock_h`, String(Math.round(dockH))); } catch (e) {} }, [dockH, wsIdForPersist]);
+  useEffect(() => { try { localStorage.setItem(`tcf_${wsIdForPersist}_combine_all`, combineAll ? '1':'0'); } catch (e) {} }, [combineAll, wsIdForPersist]);
+  useEffect(() => { try { localStorage.setItem(`tcf_${wsIdForPersist}_combine_order`, JSON.stringify(combineOrder||[])); } catch (e) {} }, [combineOrder, wsIdForPersist]);
 
   const handleDockReset = () => {
     setDockAnim(true);
@@ -306,7 +306,7 @@ const usedIds = useMemo(() => {
         try {
           queueMicrotask?.(() => window.dispatchEvent(new Event('tcf-project-changed')));
 
-        } catch {}
+        } catch (e) {}
       }catch(e){ console.warn('autosave failed', e); }
     }, 400);
     
@@ -316,7 +316,7 @@ const usedIds = useMemo(() => {
       try {
         const k = e && e.key ? String(e.key) : '';
         if (k.startsWith('tcf_genTabs_')) bumpGenTabs();
-      } catch {}
+      } catch (e) {}
     };
     window.addEventListener('storage', h);
     return () => window.removeEventListener('storage', h);
@@ -404,7 +404,7 @@ return () => clearTimeout(timer);
       const gen = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || [];
       if (Array.isArray(gen) && gen.length > 0) {
         const linesFromTabs = [];
-        let activeId = null; try { activeId = localStorage.getItem('tcf_genTabs_active_' + String(itf.id)) || null; } catch {}
+        let activeId = null; try { activeId = localStorage.getItem('tcf_genTabs_active_' + String(itf.id)) || null; } catch (e) {}
         for (const tab of gen) {
           const sIx = tab.secIdx;
           const idxs = idxsFor(itf, sIx);
@@ -420,7 +420,9 @@ return () => clearTimeout(timer);
             rowVals = idxs.map(i => String((map.has(i) ? map.get(i) : (vals[i] ?? ''))).trim());
           } else {
             rowVals = idxs.map(i => String((snap[i] ?? '')).trim());
-          }
+}
+          // if all fields empty, skip this line even if included
+          if (!rowVals.some(v => v !== '')) continue;
           // overwrite Sequence if field exists in this section
           const seqIdx = findSeqIndex(itf, sIx);
           if (seqIdx != null) {
@@ -437,7 +439,7 @@ return () => clearTimeout(timer);
         }
         return linesFromTabs;
       }
-    } catch {}
+    } catch (e) {}
 
     for (let sIx = 0; sIx < (itf.sections?.length || 0); sIx++) {
       if (!included[sIx]) {
@@ -450,6 +452,8 @@ return () => clearTimeout(timer);
 
       // raw row values
       const row = idxs.map(i => String((vals[i] ?? '')).trim());
+      // if nothing filled, skip row to avoid 'sequence only' line
+      if (!row.some(v => v !== '')) continue;
 
       // overwrite Sequence in this row
       const seqIdx = findSeqIndex(itf, sIx);
@@ -739,10 +743,10 @@ return () => clearTimeout(timer);
         const gen = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(id)) || '[]') || [];
         byId[id] = { values: vals, includedSections: incl, genTabs: gen };
       }
-    } catch {}
+    } catch (e) {}
     const payload = { text: finalText, multi: isMulti, order: idList, snapshot: byId, createdAt: Date.now() };
     tplSave(name, payload);
-    setTemplFlash(false); try { void document?.querySelector('.result-area')?.offsetWidth; } catch {}
+    setTemplFlash(false); try { void document?.querySelector('.result-area')?.offsetWidth; } catch (e) {}
     setTemplFlash(true); setTimeout(()=>setTemplFlash(false), 900);
   };
 
@@ -754,7 +758,7 @@ return () => clearTimeout(timer);
       await navigator.clipboard.writeText(finalText);
       setCopiedFlash(false); // reset to allow retrigger
       // Force reflow so animation restarts even if class was recently removed
-      try { void document?.querySelector('.result-area')?.offsetWidth; } catch {}
+      try { void document?.querySelector('.result-area')?.offsetWidth; } catch (e) {}
       setCopiedFlash(true);
       setTimeout(() => setCopiedFlash(false), 900);
     } catch {
@@ -789,31 +793,57 @@ const clearForm = () => {
   setValsMap(map);
   saveValues(map); // fires tcf-values-changed
 
-  // 2) Clear includedSections (legacy) and all section colors
-  try {
-    const fresh = loadConfig();
-    const all = Array.isArray(fresh.interfaces) ? fresh.interfaces : [];
-    const updated = all.map(it => {
-      if (it.id !== iface.id) return it;
-      const included = (it.sections || []).map(() => false);
-      const colors = (it.sections || []).map(() => '');
-      return { ...it, includedSections: included, sectionColors: colors };
-    });
-    const nextCfg = { ...fresh, interfaces: updated };
-    setCfg(nextCfg);
-    saveConfig(nextCfg); // fires tcf-config-changed
-  } catch (e) { console.warn('clearForm: cfg update failed', e); }
+  // 1b) Reset segmentation UI so textarea switches back to finalText (no leftover 'sekwencja')
+  try { setSegmentTextStr(''); setSegmentMode(false); } catch (e) {}
 
-  // 3) Remove all generated subsections (tabs) for this interface
+
+  // 2) Clear includedSections (legacy) and all section colors — in-state & persist
+  try {
+    setCfg(prev => {
+      const next = {
+        ...prev,
+        interfaces: (prev?.interfaces || []).map(it => {
+          if (it.id !== iface.id) return it;
+          const zeros = Array.from({ length: (it.sections?.length || 0) }, () => 0);
+          const flags = zeros.map(() => false);
+          return { ...it, includedSections: flags, sectionColors: flags.map(()=>''), sectionUsageCounts: zeros };
+        })
+      };
+      saveConfig(next);
+      try { window.dispatchEvent(new Event('tcf-config-changed')); } catch (e) {}
+      return next;
+    });
+  } catch (e) { console.warn('clearForm: includedSections reset failed', e); }
+
+  // Mirror the same reset onto the local `iface` state so Introduction reflects immediately
+  try {
+    setIface(prev => {
+      if (!prev || prev.id !== iface.id) return prev;
+      const zeros = Array.from({ length: (prev.sections?.length || 0) }, () => 0);
+      const flags = zeros.map(() => false);
+      return { ...prev, includedSections: flags, sectionColors: flags.map(()=>''), sectionUsageCounts: zeros };
+    });
+  } catch (e) { console.warn('clearForm: iface mirror reset failed', e); }
+
+// 3) Remove all generated subsections (tabs) for this interface
   try {
     const key = 'tcf_genTabs_' + String(iface.id);
     const akey = 'tcf_genTabs_active_' + String(iface.id);
-    try { localStorage.removeItem(key); } catch {}
-    try { localStorage.removeItem(akey); } catch {}
-    try { bumpGenTabs(); } catch {}
+    try { localStorage.removeItem(key); } catch (e) {}
+    try { localStorage.removeItem(akey); } catch (e) {}
+    try { bumpGenTabs(); } catch (e) {}
   } catch (e) { console.warn('clearForm: tabs wipe failed', e); }
 
-  // 4) Reset UI anchors
+  
+
+  // 3b) Recompute section-usage counters (Introduction badges) after wipe
+  try {
+    const tabsMap = tabsByIdFromStorage(); // after removal above, current iface has []
+    const nextVals = { ...valsMap, [iface.id]: Array.from({ length: (iface.labels?.length || 0) }, () => '') };
+    applySectionUsage(nextVals, tabsMap);
+  } catch (e) {}
+
+// 4) Reset UI anchors
   setActiveSec(0);
   setColorPicker(null);
 };
@@ -897,8 +927,8 @@ const clearSection = () => {
       const nextVals = {};
       for (const it of all) {
         nextVals[it.id] = Array.from({ length: (it.labels?.length || 0) }, () => '');
-        try { localStorage.removeItem('tcf_genTabs_' + String(it.id)); } catch {}
-        try { localStorage.removeItem('tcf_genTabs_active_' + String(it.id)); } catch {}
+        try { localStorage.removeItem('tcf_genTabs_' + String(it.id)); } catch (e) {}
+        try { localStorage.removeItem('tcf_genTabs_active_' + String(it.id)); } catch (e) {}
       }
       setValsMap(nextVals);
       saveValues(nextVals);
@@ -917,10 +947,10 @@ const clearSection = () => {
       setCfg(newCfg);
       saveConfig(newCfg);
       // close project if opened
-      try { localStorage.removeItem('tcf_current_project'); } catch {}
-      try { window.dispatchEvent(new Event('tcf-project-changed')); } catch {}
+      try { localStorage.removeItem('tcf_current_project'); } catch (e) {}
+      try { window.dispatchEvent(new Event('tcf-project-changed')); } catch (e) {}
       // UI resets
-      try { bumpGenTabs?.(); } catch {}
+      try { bumpGenTabs?.(); } catch (e) {}
       applySectionUsage(nextVals, tabsById);
       setActiveSec(0);
       setColorPicker(null);
@@ -937,7 +967,7 @@ const clearSection = () => {
       }
       setSegmentTextStr('');
       setSegmentMode(true);
-      try { if (!dockOpen) setDockOpen(true); } catch {}
+      try { if (!dockOpen) setDockOpen(true); } catch (e) {}
     } else {
       // turning OFF -> only clear textarea
       setSegmentTextStr('');
@@ -947,7 +977,26 @@ const clearSection = () => {
 
   
   // === After-segmentation: recompute section usage (Introduction icons + counters) ===
-  function applySectionUsage(nextVals, tabsByIdMap) {
+  
+
+  // Build Map<ifaceId, tabs[]> from localStorage (used when recomputing usage outside segmentation)
+  function tabsByIdFromStorage() {
+    const m = new Map();
+    try {
+      for (const it of (cfg?.interfaces || [])) {
+        const id = it.id;
+        try {
+          const key = 'tcf_genTabs_' + String(id);
+          const arr = JSON.parse(localStorage.getItem(key) || '[]');
+          if (Array.isArray(arr)) m.set(id, arr);
+          else m.set(id, []);
+        } catch { m.set(id, []); }
+      }
+    } catch (e) {}
+    return m;
+  }
+
+function applySectionUsage(nextVals, tabsByIdMap) {
     const newCfg = {
       ...cfg,
       interfaces: (cfg?.interfaces || []).map(it => {
@@ -973,7 +1022,7 @@ const clearSection = () => {
             const s = Number(tb && tb.secIdx);
             if (Number.isFinite(s) && s >= 0 && s < nSecs) counts[s] += 1;
           }
-        } catch {}
+        } catch (e) {}
 
         return {
           ...it,
@@ -984,7 +1033,7 @@ const clearSection = () => {
     };
     setCfg(newCfg);
     saveConfig(newCfg);
-    try { window.dispatchEvent(new Event('tcf-config-changed')); } catch {}
+    try { window.dispatchEvent(new Event('tcf-config-changed')); } catch (e) {}
   }
 
 function segmentRun() {
@@ -999,25 +1048,25 @@ function segmentRun() {
         for (const [id, list] of tabsById.entries()) {
           const key = 'tcf_genTabs_' + String(id);
           localStorage.setItem(key, JSON.stringify(list));
-          try { localStorage.removeItem('tcf_genTabs_active_' + String(id)); } catch {}
+          try { localStorage.removeItem('tcf_genTabs_active_' + String(id)); } catch (e) {}
         }
-      } catch {}
-      try { bumpGenTabs?.(); } catch {}
+      } catch (e) {}
+      try { bumpGenTabs?.(); } catch (e) {}
       applySectionUsage(nextVals, tabsById);
       if (Array.isArray(involvedIfaceIds) && involvedIfaceIds.length > 1) {
-        try { setCombineAll(true); } catch {}
-        try { setCombineOrder(involvedIfaceIds); } catch {}
+        try { setCombineAll(true); } catch (e) {}
+        try { setCombineOrder(involvedIfaceIds); } catch (e) {}
       }
       const invalidCount = badLines.length;
       const msg = (t('segSummary') || 'Podsumowanie') + ':\n' +
                   (t('segRead') || 'Odczytane linie') + ': ' + String(readCount) + '\n' +
                   (t('segBad') || 'Błędne linie') + ': ' + String(invalidCount) + (invalidCount ? ('\n- ' + badLines.join('\n- ')) : '');
-      try { alert(msg); } catch {}
+      try { alert(msg); } catch (e) {}
       setSegmentTextStr('');
       setSegmentMode(false);
     } catch(e) {
       console.error('segmentRun error', e);
-      try { alert('Segmentacja nie powiodła się: ' + (e?.message || e)); } catch {}
+      try { alert('Segmentacja nie powiodła się: ' + (e?.message || e)); } catch (e) {}
     }
   }
 if (!iface) return null;
@@ -1242,7 +1291,7 @@ if (!iface) return null;
                         draggable
                         onDragStart={(e) => {
                           setDragId(id);
-                          try { e.dataTransfer.setData('text/plain', id); } catch {}
+                          try { e.dataTransfer.setData('text/plain', id); } catch (e) {}
                           if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
                         }}
                         onDragOver={(e) => {
@@ -1278,7 +1327,7 @@ if (!iface) return null;
                       onDoubleClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          try { navigate(`/iface/${id}`); setActiveSec(0); } catch {}
+                          try { navigate(`/iface/${id}`); setActiveSec(0); } catch (e) {}
                         }}
 >
                         <span className="combine-tile-title">{itf.name || id}</span>
