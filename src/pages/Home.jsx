@@ -1279,7 +1279,7 @@ if (!iface) return null;
 
       <div className={`result-dock ${dockOpen ? 'open' : 'closed'}`}>
         <div className="dock-head" ref={dockHeadRef} onMouseDown={handleDockMouseDown} onDoubleClick={handleDockReset}>
-          <div className="dock-title">{t('result')}</div>
+          <div className="dock-title">{segmentMode ? t('fill') : t('result')}</div>
           <button className="dock-toggle" onMouseDown={(e) => e.stopPropagation()} onClick={() => setDockOpen(o => !o)}>
             {dockOpen ? '⯆' : '⯅'}
           </button>
@@ -1287,7 +1287,7 @@ if (!iface) return null;
         <div className="dock-body">
           <div className="inner">
             <label className="block">
-              <span>{t('result')}:</span>
+              <span>{segmentMode ? t('fill') : t('result')}:</span>
               <textarea className={'result-area' + (templFlash ? ' template-flash' : '') + (copiedFlash ? ' copied-flash' : '')} readOnly={!segmentMode} value={ segmentMode ? segmentTextStr : finalText } onChange={e => segmentMode && setSegmentTextStr(e.target.value)} style={{height: dockH, transition: dockAnim ? 'height 180ms ease' : 'none', resize: 'none', outline: segmentMode ? '2px solid var(--ok, #16a34a)' : 'none', boxShadow: segmentMode ? '0 0 0 2px rgba(22,163,74,.25) inset' : 'none'}} />
             </label>
             
@@ -1437,7 +1437,7 @@ if (!iface) return null;
         </div>
       </div>
       {!dockOpen && (
-        <button className="dock-fab" onClick={() => setDockOpen(true)} title={t('result')}>⯅</button>
+        <button className="dock-fab" onClick={() => setDockOpen(true)} title={segmentMode ? t('fill') : t('result')}>⯅</button>
       )}
     </main>
   );
