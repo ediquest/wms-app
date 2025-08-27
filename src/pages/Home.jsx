@@ -886,6 +886,7 @@ const clearSection = () => {
       try { window.dispatchEvent(new Event('tcf-project-changed')); } catch {}
       // UI resets
       try { bumpGenTabs?.(); } catch {}
+      applySectionUsage(nextVals, tabsById);
       setActiveSec(0);
       setColorPicker(null);
     } catch (e) { console.warn('globalWipeAll error', e); }
@@ -909,7 +910,49 @@ const clearSection = () => {
     }
   }
 
-  function segmentRun() {
+  
+  // === After-segmentation: recompute section usage (Introduction icons + counters) ===
+  function applySectionUsage(nextVals, tabsByIdMap) {
+    const newCfg = {
+      ...cfg,
+      interfaces: (cfg?.interfaces || []).map(it => {
+        const id = it.id;
+        const nSecs = it.sections?.length || 0;
+        const counts = Array.from({ length: nSecs }, () => 0);
+
+        const fieldSecs = it.fieldSections || [];
+        const baseVals = nextVals[id] || [];
+
+        // Base: if any field in the section is non-empty -> at least 1
+        for (let i = 0; i < fieldSecs.length; i++) {
+          const s = fieldSecs[i];
+          if (s >= 0 && String(baseVals[i] ?? '').trim() !== '') {
+            counts[s] = Math.max(counts[s], 1);
+          }
+        }
+
+        // Tabs: each snapshot with secIdx increments usage for that section
+        try {
+          const tabs = (tabsByIdMap && tabsByIdMap.get) ? (tabsByIdMap.get(id) || []) : [];
+          for (const tb of tabs) {
+            const s = Number(tb && tb.secIdx);
+            if (Number.isFinite(s) && s >= 0 && s < nSecs) counts[s] += 1;
+          }
+        } catch {}
+
+        return {
+          ...it,
+          includedSections: counts.map(c => c > 0),
+          sectionUsageCounts: counts, // optional counter for UI badges
+        };
+      }),
+    };
+    setCfg(newCfg);
+    saveConfig(newCfg);
+    try { window.dispatchEvent(new Event('tcf-config-changed')); } catch {}
+  }
+
+function segmentRun() {
     try{
       const text = String(segmentTextStr || '');
       const { valsMap: nextVals, tabsById, readCount, badLines, involvedIfaceIds } = segmentText(text, cfg, iface, valsMap);
@@ -925,6 +968,7 @@ const clearSection = () => {
         }
       } catch {}
       try { bumpGenTabs?.(); } catch {}
+      applySectionUsage(nextVals, tabsById);
       if (Array.isArray(involvedIfaceIds) && involvedIfaceIds.length > 1) {
         try { setCombineAll(true); } catch {}
         try { setCombineOrder(involvedIfaceIds); } catch {}

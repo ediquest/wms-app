@@ -23,6 +23,8 @@ export function segmentText(text, cfg, activeIface, valsMap) {
   let seqFixes = 0;
   const fixedSeqLines = [];
 
+  let firstTarget = null;
+
   const allIfaces = Array.isArray(cfg?.interfaces) ? cfg.interfaces : [];
 
   const norm = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -71,6 +73,7 @@ export function segmentText(text, cfg, activeIface, valsMap) {
     if (!itf) { badLines.push(raw); continue; }
 
     const id = itf.id;
+    if (!firstTarget) firstTarget = { id: id, secIx: -1 };
     if (!involvedIfaceIds.includes(id)) involvedIfaceIds.push(id);
 
     const labels = Array.isArray(itf.labels) ? itf.labels : [];
@@ -91,6 +94,8 @@ export function segmentText(text, cfg, activeIface, valsMap) {
     }
     const secIx = sectionNumbers.indexOf(secNo);
     if (secIx < 0) { badLines.push(raw); continue; }
+
+    if (firstTarget && firstTarget.secIx === -1) firstTarget.secIx = secIx;
 
     // base values
     const base = Array.isArray(nextVals[id]) ? [...nextVals[id]] : Array.from({length: totalFields}, () => '');
@@ -162,12 +167,6 @@ let list = tabsById.get(id) || [];
 if (!baseWritten.has(key)) {
   baseWritten.add(key);
   nextVals[id] = base;
-  // Push a snapshot for the FIRST occurrence as well, so UI sees full count & correct order
-  list.push({
-    id: (Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7)),
-    secIdx: secIx,
-    snapshot: idxs.map(i => ({ i, v: base[i] }))
-  });
 } else {
   list.push({
     id: (Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7)),
@@ -179,5 +178,6 @@ tabsById.set(id, list);
 readCount++;
   }
 
-  return { valsMap: nextVals, tabsById, readCount, badLines, involvedIfaceIds, seqFixes, fixedSeqLines };
+  try { if (firstTarget && firstTarget.id) { localStorage.setItem('tcf_seg_last', JSON.stringify(firstTarget)); } } catch {}
+  return { valsMap: nextVals, tabsById, readCount, badLines, involvedIfaceIds, seqFixes, fixedSeqLines, firstTarget };
 }

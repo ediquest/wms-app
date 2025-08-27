@@ -28,6 +28,20 @@ export default function GeneratedTabs({
   const [activeId, setActiveId] = useState(() => { try { return localStorage.getItem(activeKey) || null; } catch { return null; } });
   useEffect(() => { setTabs(readTabs()); }, [key]);
 
+  // Ensure we select an existing tab when present (prevents auto-creating a duplicate on first open)
+  useEffect(() => {
+    try {
+      if (!activeId && Array.isArray(tabs) && tabs.length > 0) {
+        const inThisSection = tabs.find(t => Number(t.secIdx) === Number(activeSec));
+        const pick = inThisSection || tabs[0];
+        if (pick?.id) {
+          setActiveId(pick.id);
+          try { localStorage.setItem(activeKey, pick.id); } catch {}
+        }
+      }
+    } catch {}
+  }, [tabs, activeId, activeSec]);
+
   const idxsFor = useCallback((itf, sIx) => {
     const arr = (itf?.fieldSections || []);
     const idxs = [];
@@ -84,6 +98,9 @@ export default function GeneratedTabs({
     if (!idxs.length) return false;
     const has = idxs.some(i => String(values?.[i] ?? "").trim().length > 0);
     if (!has) return false;
+    // If any generated tab already exists for this section, do NOT auto-create another one.
+    if (Array.isArray(tabs) && tabs.some(t => Number(t.secIdx) === Number(secIdx))) return false;
+
     const activeIdLS = (typeof window !== "undefined") ? (localStorage.getItem(activeKey) || activeId) : activeId;
     const activeTab = tabs.find(t => t.id === activeIdLS);
     if (activeTab && activeTab.secIdx === secIdx) return false;
