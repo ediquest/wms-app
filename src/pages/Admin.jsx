@@ -11,6 +11,7 @@ import ScrollTabs from '../components/ScrollTabs.jsx'
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
 import AddInterfaceModal from '../components/AddInterfaceModal.jsx';
 import ImportBackupModal from '../components/ImportBackupModal.jsx';
+import ImportWmsModal from '../components/ImportWmsModal.jsx';
 // --- helpers: wykrywanie i normalizacja pojedynczego interfejsu ---
 function isSingleInterface(obj) {
   if (!obj || !Array.isArray(obj.sections)) return false;
@@ -242,9 +243,12 @@ export default function Admin({ role }){
   // --- Add Interface modal state ---
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
+  const [isWmsOpen, setIsWmsOpen] = useState(false);
+  const [wmsStatus, setWmsStatus] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
   const applyBackupData = (data, mode='merge') => {
-    try {
+
+      try {
       if (data && data._type === 'tcf_full_backup' && data.config && data.values) {
         if (mode === 'replace') {
           saveConfig(data.config);
@@ -302,6 +306,49 @@ export default function Admin({ role }){
     } catch (err) {
       console.error(err);
       setImportStatus({ kind: 'error', key: 'invalidJson' });
+    }
+  };
+
+  function applyWmsData(data, mode='add', targetId='') {
+    try {
+      let list = [];
+      if (data && Array.isArray(data.interfaces)) list = data.interfaces;
+      else if (Array.isArray(data) && data.length) list = data;
+      else if (data && Array.isArray(data.sections)) list = [data];
+      else { setWmsStatus({ kind: 'error', key: 'invalidJson' }); return; }
+
+      const next = { ...cfg, interfaces: [...cfg.interfaces] }
+
+
+      if (mode === 'overwrite' && targetId) {
+        const prepared = normalizeInterface(list[0]);
+        prepared.id = targetId;
+        const idx = next.interfaces.findIndex(i => i.id === targetId);
+        if (idx >= 0) { next.interfaces = next.interfaces.slice(); next.interfaces[idx] = prepared; }
+        else { next.interfaces = next.interfaces.concat(prepared); }
+        saveConfig(next); setCfg(next);
+        setWmsStatus({ kind:'success', key:'importOk' });
+        return;
+      }
+
+      // add mode
+      const taken = new Set(next.interfaces.map(i => i.id));
+      const uniqueId = (baseId) => {
+        let id = String(baseId || 'ifc'); let n=1;
+        while (taken.has(id)) { id = baseId + '-' + (++n); }
+        taken.add(id);
+        return id;
+      };
+      for (const raw of list) {
+        const prepared = normalizeInterface(raw);
+        if (!prepared.id || taken.has(prepared.id)) prepared.id = uniqueId(prepared.id || 'ifc');
+        next.interfaces.push(prepared);
+      }
+      saveConfig(next); setCfg(next);
+      setWmsStatus({ kind:'success', key:'importOk' });
+    } catch (e) {
+      console.error(e);
+      setWmsStatus({ kind:'error', key:'invalidJson' });
     }
   };
 
@@ -797,7 +844,7 @@ const sortedInterfaces = useMemo(() => {
               <button type="button" onClick={()=>setIsAddOpen(true)}>{t('newInterfaceTitle')}</button>
               <button type="button" onClick={exportAll}>{t('export')}</button>
               <button type="button" onClick={()=>setIsBackupOpen(true)}>{t('importBackup') || 'Import Backup'}</button>
-              <button type="button" onClick={() => fileInputRef.current?.click()}>{t('import')}</button>
+              <button type="button" onClick={()=>setIsWmsOpen(true)}>{t('import')}</button>
               <DataImportButtons cfg={cfg} setCfg={setCfg} t={t} />
 
               <input ref={fileInputRef} type="file" accept="application/json" style={{display:'none'}} onChange={(e)=>
@@ -928,7 +975,15 @@ const sortedInterfaces = useMemo(() => {
           onClose={()=>{ setIsBackupOpen(false); setImportStatus(null); }}
           onImport={applyBackupData}
         />
-</main>
+
+        <ImportWmsModal
+          open={isWmsOpen}
+          status={wmsStatus}
+          interfaces={cfg.interfaces}
+          onClose={()=>{ setIsWmsOpen(false); setWmsStatus(null); }}
+          onImport={applyWmsData}
+        />
+      </main>
     )
   }
 
@@ -1107,6 +1162,14 @@ const sortedInterfaces = useMemo(() => {
           onClose={()=>{ setIsBackupOpen(false); setImportStatus(null); }}
           onImport={applyBackupData}
         />
-</main>
+
+        <ImportWmsModal
+          open={isWmsOpen}
+          status={wmsStatus}
+          interfaces={cfg.interfaces}
+          onClose={()=>{ setIsWmsOpen(false); setWmsStatus(null); }}
+          onImport={applyWmsData}
+        />
+      </main>
   )
 }

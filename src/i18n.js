@@ -198,6 +198,8 @@ maxLenFlex: 'Max length: FLEX',    importDone: "Import done.",    csvHasHeader: 
       no: "no",
       importError: "Import error.",
       close: "Close",
+      importWmsTitle: "Import WMS (JSON)",
+      chooseTargetInterface: "Choose target interface",
   },
 
   pl: {
@@ -386,6 +388,8 @@ maxLenFlex: 'Maks. długość: FLEX',    importDone: "Import zakończony.",    c
       no: "nie",
       importError: "Błąd importu.",
       close: "Zamknij",
+      importWmsTitle: "Importuj WMS (JSON)",
+      chooseTargetInterface: "Wybierz interfejs docelowy",
   },
 
   fr: {
@@ -544,6 +548,8 @@ maxLenFlex: 'Longueur max : FLEX',
       no: "non",
       importError: "Erreur d'import.",
       close: "Fermer",
+      importWmsTitle: "Importer WMS (JSON)",
+      chooseTargetInterface: "Choisir l'interface cible",
   },
 
   cs: {
@@ -713,6 +719,8 @@ maxLenFlex: 'Max. délka: FLEX',
       no: "ne",
       importError: "Chyba importu.",
       close: "Zavřít",
+      importWmsTitle: "Import WMS (JSON)",
+      chooseTargetInterface: "Vyberte cílové rozhraní",
   },
 
   de: {
@@ -872,6 +880,8 @@ maxLenFlex: 'Max. Länge: FLEX',
       no: "nein",
       importError: "Importfehler.",
       close: "Schließen",
+      importWmsTitle: "WMS importieren (JSON)",
+      chooseTargetInterface: "Ziel-Schnittstelle wählen",
   },
 
   es: {
@@ -1046,6 +1056,8 @@ notice: "Aviso",
       no: "no",
       importError: "Error de importación.",
       close: "Cerrar",
+      importWmsTitle: "Importar WMS (JSON)",
+      chooseTargetInterface: "Elige interfaz de destino",
   },
 
   it: {
@@ -1093,6 +1105,8 @@ notice: "Aviso",
       importError: "Errore d'importazione.",
       close: "Chiudi",
       ok: "OK",
+      importWmsTitle: "Importa WMS (JSON)",
+      chooseTargetInterface: "Scegli l'interfaccia di destinazione",
   },
 
 it: {
