@@ -1,6 +1,15 @@
 import DataImportButtons from '../components/DataImportButtons.jsx';
 
 
+
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router-dom'
+import { loadConfig, saveConfig, loadValues, saveValues, timestamp } from '../utils.js'
+import { t } from '../i18n.js'
+import ScrollTabs from '../components/ScrollTabs.jsx'
+
+import GeneratedTabs from '../components/GeneratedTabs.jsx';
+import AddInterfaceModal from '../components/AddInterfaceModal.jsx';
 // --- helpers: wykrywanie i normalizacja pojedynczego interfejsu ---
 function isSingleInterface(obj) {
   if (!obj || !Array.isArray(obj.sections)) return false;
@@ -169,11 +178,9 @@ function importFromJsonTop(obj, cfg, setCfg, t) {
 
 // Detect-and-import: accepts either full backup {interfaces,categories} || single interface object
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import { loadConfig, saveConfig, loadValues, saveValues, timestamp } from '../utils.js'
-import { t } from '../i18n.js'
-import ScrollTabs from '../components/ScrollTabs.jsx'
+
+
+
 
 function normalizeInterface(i){
   let iface = { ...i }
@@ -221,6 +228,35 @@ function normalizeConfig(cfg){
 }
 
 export default function Admin({ role }){
+  // --- Add Interface modal state ---
+  const [isAddOpen, setIsAddOpen] = useState(false);
+
+  const createInterfaceFromModal = ({ id, name, categoryId, cloneId }) => {
+    const exists = cfg.interfaces.some(i => i.id === id);
+    if (exists) { alert('Interfejs o takim ID już istnieje.'); return; }
+    let nextIface;
+    if (cloneId) {
+      // clone existing one by ID
+      const base = cfg.interfaces.find(i => i.id === cloneId);
+      if (!base) { alert('Wybrany interfejs do skopiowania nie istnieje.'); return; }
+      nextIface = JSON.parse(JSON.stringify(base));
+      nextIface.id = id;
+      nextIface.name = name;
+      nextIface.categoryId = categoryId || base.categoryId;
+    } else {
+      nextIface = normalizeInterface({
+        id, name: name.trim(), categoryId: categoryId || (cfg.categories[0]?.id || 'inbound'), summary: '',
+        labels: [], descriptions: [], lengths: [], required: [], types: [], flexFields: [],
+        sections: ['Introduction'], sectionNumbers: ['000'], fieldSections: [], separators: [],
+        defaultFields: (cfg.defaultFields||[])
+      });
+    }
+    const next = { ...cfg, interfaces: cfg.interfaces.concat(nextIface) };
+    setCfg(next); saveConfig(next);
+    const vals = loadValues(); vals[id] = []; saveValues(vals);
+    setSelectedId(id); setCurrentId(id); setMode('edit'); setActiveSec(0);
+  };
+
   const [cfg, setCfg] = useState(normalizeConfig(loadConfig()))
   const [mode, setMode] = useState(role === 'editor' ? 'edit' : 'overview')
   const [currentId, setCurrentId] = useState(cfg.interfaces[0]?.id || '')
@@ -684,7 +720,7 @@ const sortedInterfaces = useMemo(() => {
               </div>
             </div>
             <div className="actions">
-              <button onClick={addInterface}>{t('addInterface')}</button>
+              <button onClick={()=>setIsAddOpen(true)}>{t('newInterfaceTitle')}</button>
               <button onClick={exportAll}>{t('export')}</button>
               <button onClick={() => backupFileRef.current?.click()}>{t('importBackup') || 'Import Backup'}</button>
               <button onClick={() => fileInputRef.current?.click()}>{t('import')}</button>
@@ -804,7 +840,15 @@ const sortedInterfaces = useMemo(() => {
       </section>
     
       <input ref={rowFileRef} type="file" accept="application/json" style={{display:'none'}} onChange={(e)=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const txt=String(r.result).replace(/^\uFEFF/, ''); const obj=JSON.parse(txt); importFromJsonTop(obj, cfg, setCfg, t); }catch(err){ console.error('[import] parse error', err); alert(t('invalidJson')||'Nieprawidłowy plik JSON.'); } }; r.readAsText(f); e.target.value=''; }} />
-        </main>
+        
+        <AddInterfaceModal
+          open={isAddOpen}
+          onClose={()=>setIsAddOpen(false)}
+          categories={cfg.categories}
+          interfaces={cfg.interfaces}
+          onSubmit={createInterfaceFromModal}
+        />
+</main>
     )
   }
 
@@ -969,6 +1013,14 @@ const sortedInterfaces = useMemo(() => {
       </section>
     
       <input ref={rowFileRef} type="file" accept="application/json" style={{display:'none'}} onChange={(e)=>{ const f=e.target.files&&e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const txt=String(r.result).replace(/^\uFEFF/, ''); const obj=JSON.parse(txt); importFromJsonTop(obj, cfg, setCfg, t); }catch(err){ console.error('[import] parse error', err); alert(t('invalidJson')||'Nieprawidłowy plik JSON.'); } }; r.readAsText(f); e.target.value=''; }} />
-        </main>
+        
+        <AddInterfaceModal
+          open={isAddOpen}
+          onClose={()=>setIsAddOpen(false)}
+          categories={cfg.categories}
+          interfaces={cfg.interfaces}
+          onSubmit={createInterfaceFromModal}
+        />
+</main>
   )
 }

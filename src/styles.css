@@ -1222,3 +1222,21 @@ textarea::-webkit-scrollbar-corner{ background:var(--sb-corner); }
 .row > .spacer{ flex: 1 }
 .btn.primary{ background: var(--accent, #3aa1ff); border: 1px solid var(--accent, #3aa1ff); color: #fff; }
 .btn.primary:hover{ filter: brightness(.95); }
+
+/* LightModal form controls */
+.lm-body .form-row{ display:flex; flex-direction:column; gap:6px; }
+.lm-body input, .lm-body select, .lm-body textarea{
+  background: var(--inputBg, #0e1530);
+  color: var(--inputText, #e8ecff);
+  border: 1px solid var(--border, #1b2447);
+  border-radius: 10px;
+  padding: 10px 12px;
+  outline: none;
+}
+.lm-body input::placeholder, .lm-body textarea::placeholder{ color: color-mix(in srgb, var(--inputText, #e8ecff) 50%, transparent); }
+.lm-body input:focus, .lm-body select:focus, .lm-body textarea:focus{
+  border-color: color-mix(in srgb, var(--accent, #7aa2ff) 70%, var(--border, #1b2447));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #7aa2ff) 22%, transparent);
+}
+.lm-body .muted{ color: var(--muted, #9aa4bf); font-size:12px; }
+.lm-footer button[disabled]{ opacity:.6; cursor:not-allowed; }
