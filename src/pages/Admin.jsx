@@ -12,6 +12,7 @@ import GeneratedTabs from '../components/GeneratedTabs.jsx';
 import AddInterfaceModal from '../components/AddInterfaceModal.jsx';
 import ImportBackupModal from '../components/ImportBackupModal.jsx';
 import ImportWmsModal from '../components/ImportWmsModal.jsx';
+import DeleteInterfaceModal from '../components/DeleteInterfaceModal.jsx';
 // --- helpers: wykrywanie i normalizacja pojedynczego interfejsu ---
 function isSingleInterface(obj) {
   if (!obj || !Array.isArray(obj.sections)) return false;
@@ -244,6 +245,8 @@ export default function Admin({ role }){
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isWmsOpen, setIsWmsOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [wmsStatus, setWmsStatus] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
   const applyBackupData = (data, mode='merge') => {
@@ -422,11 +425,9 @@ export default function Admin({ role }){
   const toggleSort = (key) => { if (sortKey === key) setSortDir(d => d==='asc'?'desc':'asc'); else { setSortKey(key); setSortDir('asc') } }
   
 
-const deleteOne = (id) => {
+const deleteOne = (id, removeValues=true) => {
   const it = cfg.interfaces.find(x => x.id === id);
   if (!it) { alert('Interfejs nie znaleziony'); return; }
-  const ok = window.confirm(t('confirmDeleteInterface') || 'Na pewno usunąć interfejs?');
-  if (!ok) return;
   const next = { ...cfg, interfaces: cfg.interfaces.filter(x => x.id !== id) };
   saveConfig(next); setCfg(next);
   if (currentId === id) {
@@ -926,7 +927,7 @@ const sortedInterfaces = useMemo(() => {
         <button className="btn small" onClick={(e)=>{e.preventDefault(); setPendingImportId(i.id); rowFileRef.current?.click();}} style={{marginLeft:8}}>{t('import')}</button>
       </td>
       <td>
-        <button className="btn small danger" onClick={(e)=>{e.preventDefault(); deleteOne(i.id); }}>{t('deleteInterface')}</button>
+        <button className="btn small danger" onClick={(e)=>{e.preventDefault(); setDeleteTarget({id:i.id, name:i.name}); setIsDeleteOpen(true); }}>{t('deleteInterface')}</button>
       </td>
     </tr>
   ))}
@@ -983,6 +984,14 @@ const sortedInterfaces = useMemo(() => {
           onClose={()=>{ setIsWmsOpen(false); setWmsStatus(null); }}
           onImport={applyWmsData}
         />
+      
+        <DeleteInterfaceModal
+          open={isDeleteOpen}
+          target={deleteTarget}
+          onClose={()=>{ setIsDeleteOpen(false); setDeleteTarget(null); }}
+          onConfirm={({removeValues})=>{ if (deleteTarget) { deleteOne(deleteTarget.id, removeValues); } setIsDeleteOpen(false); setDeleteTarget(null); }}
+        />
+
       </main>
     )
   }
@@ -1170,6 +1179,14 @@ const sortedInterfaces = useMemo(() => {
           onClose={()=>{ setIsWmsOpen(false); setWmsStatus(null); }}
           onImport={applyWmsData}
         />
+      
+        <DeleteInterfaceModal
+          open={isDeleteOpen}
+          target={deleteTarget}
+          onClose={()=>{ setIsDeleteOpen(false); setDeleteTarget(null); }}
+          onConfirm={({removeValues})=>{ if (deleteTarget) { deleteOne(deleteTarget.id, removeValues); } setIsDeleteOpen(false); setDeleteTarget(null); }}
+        />
+
       </main>
   )
 }

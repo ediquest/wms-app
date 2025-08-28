@@ -200,6 +200,8 @@ maxLenFlex: 'Max length: FLEX',    importDone: "Import done.",    csvHasHeader: 
       close: "Close",
       importWmsTitle: "Import WMS (JSON)",
       chooseTargetInterface: "Choose target interface",
+      cannotUndo: "This action cannot be undone.",
+      alsoDeleteValues: "Also delete associated values",
   },
 
   pl: {
@@ -390,6 +392,8 @@ maxLenFlex: 'Maks. długość: FLEX',    importDone: "Import zakończony.",    c
       close: "Zamknij",
       importWmsTitle: "Importuj WMS (JSON)",
       chooseTargetInterface: "Wybierz interfejs docelowy",
+      cannotUndo: "Tej operacji nie można cofnąć.",
+      alsoDeleteValues: "Usuń także powiązane wartości",
   },
 
   fr: {
@@ -550,6 +554,8 @@ maxLenFlex: 'Longueur max : FLEX',
       close: "Fermer",
       importWmsTitle: "Importer WMS (JSON)",
       chooseTargetInterface: "Choisir l'interface cible",
+      cannotUndo: "Cette action est irréversible.",
+      alsoDeleteValues: "Supprimer aussi les valeurs associées",
   },
 
   cs: {
@@ -721,6 +727,8 @@ maxLenFlex: 'Max. délka: FLEX',
       close: "Zavřít",
       importWmsTitle: "Import WMS (JSON)",
       chooseTargetInterface: "Vyberte cílové rozhraní",
+      cannotUndo: "Tuto akci nelze vrátit zpět.",
+      alsoDeleteValues: "Smazat také související hodnoty",
   },
 
   de: {
@@ -882,6 +890,8 @@ maxLenFlex: 'Max. Länge: FLEX',
       close: "Schließen",
       importWmsTitle: "WMS importieren (JSON)",
       chooseTargetInterface: "Ziel-Schnittstelle wählen",
+      cannotUndo: "Diese Aktion kann nicht rückgängig gemacht werden.",
+      alsoDeleteValues: "Zugehörige Werte ebenfalls löschen",
   },
 
   es: {
@@ -1058,6 +1068,8 @@ notice: "Aviso",
       close: "Cerrar",
       importWmsTitle: "Importar WMS (JSON)",
       chooseTargetInterface: "Elige interfaz de destino",
+      cannotUndo: "Esta acción no se puede deshacer.",
+      alsoDeleteValues: "Eliminar también los valores asociados",
   },
 
   it: {
@@ -1107,6 +1119,8 @@ notice: "Aviso",
       ok: "OK",
       importWmsTitle: "Importa WMS (JSON)",
       chooseTargetInterface: "Scegli l'interfaccia di destinazione",
+      cannotUndo: "Questa azione non può essere annullata.",
+      alsoDeleteValues: "Elimina anche i valori associati",
   },
 
 it: {
