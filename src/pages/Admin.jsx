@@ -11,6 +11,7 @@ import ScrollTabs from '../components/ScrollTabs.jsx'
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
 import AddInterfaceModal from '../components/AddInterfaceModal.jsx';
 import AddCategoryModal from '../components/AddCategoryModal.jsx';
+import DeleteCategoryModal from '../components/DeleteCategoryModal.jsx';
 import RenameCategoryModal from '../components/RenameCategoryModal.jsx';
 import ImportBackupModal from '../components/ImportBackupModal.jsx';
 import ImportWmsModal from '../components/ImportWmsModal.jsx';
@@ -246,6 +247,9 @@ export default function Admin({ role }){
   // --- Add Interface modal state ---
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [isDeleteCatOpen, setIsDeleteCatOpen] = useState(false);
+  const [deleteCatTarget, setDeleteCatTarget] = useState(null);
+  const [deleteCatCount, setDeleteCatCount] = useState(0);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState(null);
 const [isBackupOpen, setIsBackupOpen] = useState(false);
@@ -376,6 +380,29 @@ const [isBackupOpen, setIsBackupOpen] = useState(false);
     saveConfig(next);
     setCfg(next);
   };
+  const deleteCategoryFromModal = ({ id, mode, destCategoryId }) => {
+    const impacted = cfg.interfaces.filter(i => i.categoryId === id).map(i => i.id);
+    let next = { ...cfg, categories: cfg.categories.filter(c => c.id !== id), interfaces: [...cfg.interfaces] };
+
+    if (impacted.length) {
+      if (mode === 'move' && destCategoryId) {
+        next.interfaces = next.interfaces.map(i => i.categoryId === id ? { ...i, categoryId: destCategoryId } : i);
+      } else if (mode === 'delete') {
+        next.interfaces = next.interfaces.filter(i => i.categoryId !== id);
+        // also delete values of removed interfaces
+        const vals = loadValues();
+        for (const iid of impacted) { delete vals[iid]; }
+        saveValues(vals);
+      } else {
+        // neither move nor delete properly selected; do nothing
+        return;
+      }
+    }
+
+    saveConfig(next);
+    setCfg(next);
+  };
+
 
 
   const createInterfaceFromModal = ({ id, name, categoryId, cloneId }) => {
@@ -970,7 +997,7 @@ const sortedInterfaces = useMemo(() => {
                   <td>{count}</td>
                   <td className="table-actions">
                     <button onClick={()=>{ setRenameTarget({id:c.id, name:c.name}); setIsRenameOpen(true); }}>{t('renameCategory')}</button>
-                    <button className="danger" onClick={()=>{ if(count>0){ alert('Najpierw przenieś interfejsy do innej kategorii.'); return; } if(!confirm('Usunąć kategorię?')) return; const next={...cfg, categories: cfg.categories.filter(x=> x.id!==c.id)}; saveConfig(next); setCfg(next); }}>Usuń</button>
+                    <button className="danger" onClick={()=>{ const count = cfg.interfaces.filter(i=>i.categoryId===c.id).length; setDeleteCatTarget({id:c.id, name:c.name}); setDeleteCatCount(count); setIsDeleteCatOpen(true); }}>{t('delete')}</button>
                   </td>
                 </tr>
               )
@@ -1027,6 +1054,15 @@ const sortedInterfaces = useMemo(() => {
           target={renameTarget}
           onClose={()=>{ setIsRenameOpen(false); setRenameTarget(null); }}
           onSubmit={renameCategoryFromModal}
+        />
+      
+        <DeleteCategoryModal
+          open={isDeleteCatOpen}
+          target={deleteCatTarget}
+          categories={cfg.categories}
+          interfacesInCategory={deleteCatCount}
+          onClose={()=>{ setIsDeleteCatOpen(false); setDeleteCatTarget(null); }}
+          onConfirm={(payload)=>{ if (deleteCatTarget) { deleteCategoryFromModal(payload); } setIsDeleteCatOpen(false); setDeleteCatTarget(null);}}
         />
       </main>
     )
@@ -1180,7 +1216,7 @@ const sortedInterfaces = useMemo(() => {
                   <td>{count}</td>
                   <td className="table-actions">
                     <button onClick={()=>{ setRenameTarget({id:c.id, name:c.name}); setIsRenameOpen(true); }}>{t('renameCategory')}</button>
-                    <button className="danger" onClick={()=>{ if(count>0){ alert('Najpierw przenieś interfejsy do innej kategorii.'); return; } if(!confirm('Usunąć kategorię?')) return; const next={...cfg, categories: cfg.categories.filter(x=> x.id!==c.id)}; saveConfig(next); setCfg(next); }}>Usuń</button>
+                    <button className="danger" onClick={()=>{ const count = cfg.interfaces.filter(i=>i.categoryId===c.id).length; setDeleteCatTarget({id:c.id, name:c.name}); setDeleteCatCount(count); setIsDeleteCatOpen(true); }}>{t('delete')}</button>
                   </td>
                 </tr>
               )
