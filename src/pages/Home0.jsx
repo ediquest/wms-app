@@ -548,14 +548,11 @@ return () => clearTimeout(timer);
             }
           }
           const obj = {};
-idxs.forEach((i, k) => {
-  const label = String((itf.labels || [])[i] || `f${i}`);
-  const v = rowVals[k];
-  if (!skipEmpty || String(v).trim() !== '') obj[label] = v;
-});
-// push only if there is at least one key
-if (Object.keys(obj).length) rows.push(obj);
-
+          idxs.forEach((i, k) => {
+            const label = String((itf.labels || [])[i] || `f${i}`);
+            obj[label] = rowVals[k];
+          });
+          rows.push(obj);
         }
         return;
       }
@@ -583,14 +580,11 @@ if (Object.keys(obj).length) rows.push(obj);
           }
         }
         const obj = {};
-idxs.forEach((i, k) => {
-  const label = String((itf.labels || [])[i] || `f${i}`);
-  const v = rowVals[k];
-  if (!skipEmpty || String(v).trim() !== '') obj[label] = v;
-});
-// push only if there is at least one key
-if (Object.keys(obj).length) rows.push(obj);
-
+        idxs.forEach((i, k) => {
+          const label = String((itf.labels || [])[i] || `f${i}`);
+          obj[label] = rowVals[k];
+        });
+        rows.push(obj);
       }
     };
     if (combineAll) {
@@ -618,16 +612,7 @@ if (Object.keys(obj).length) rows.push(obj);
       const s2 = s.replace(/"/g, '""');
       return wrap ? '"' + s2 + '"' : s2;
     };
-    const joinRow = (row) => {
-      // Accept arrays or objects; when object, follow header order
-      if (Array.isArray(row)) return row.map(esc).join(csvSep);
-      if (row && typeof row === 'object') {
-        if (!header) header = Object.keys(row);
-        return header.map(k => esc(row[k] ?? '')).join(csvSep);
-      }
-      // Fallback for primitives/invalid
-      return esc(String(row ?? ''));
-    };
+    const joinRow = (arr) => arr.map(esc).join(csvSep);
     const emitRowsFor = (itf, vals) => {
       const gen = (function(){ try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || []; } catch { return []; } })();
       if (Array.isArray(gen) && gen.length > 0) {
@@ -648,15 +633,11 @@ if (Object.keys(obj).length) rows.push(obj);
             }
           }
           const obj = {};
-idxs.forEach((i, k) => {
-  const label = String((itf.labels || [])[i] || `f${i}`);
-  const v = rowVals[k];
-  if (!skipEmpty || String(v).trim() !== '') obj[label] = v;
-});
-// push only if there is at least one key
-if (Object.keys(obj).length) rows.push(obj);
-        if (!header) header = Object.keys(obj);
-
+          idxs.forEach((i, k) => {
+            const label = String((itf.labels || [])[i] || `f${i}`);
+            obj[label] = rowVals[k];
+          });
+          rows.push(obj);
         }
         return;
       }
@@ -680,15 +661,11 @@ if (Object.keys(obj).length) rows.push(obj);
           }
         }
         const obj = {};
-idxs.forEach((i, k) => {
-  const label = String((itf.labels || [])[i] || `f${i}`);
-  const v = rowVals[k];
-  if (!skipEmpty || String(v).trim() !== '') obj[label] = v;
-});
-// push only if there is at least one key
-if (Object.keys(obj).length) rows.push(obj);
-        if (!header) header = Object.keys(obj);
-
+        idxs.forEach((i, k) => {
+          const label = String((itf.labels || [])[i] || `f${i}`);
+          obj[label] = rowVals[k];
+        });
+        rows.push(obj);
       }
     };
     if (combineAll) {
@@ -703,17 +680,9 @@ if (Object.keys(obj).length) rows.push(obj);
       emitRowsFor(iface, values);
     }
     const out = [];
-// If header requested, optionally filter to only keys that have any non-empty value across rows
-if (csvHeader && header) {
-  if (skipEmpty) {
-    const nonEmptySet = new Set();
-    for (const r of rows) for (const [k, v] of Object.entries(r)) if (String(v ?? '').trim() !== '') nonEmptySet.add(k);
-    header = header.filter(k => nonEmptySet.has(k));
-  }
-  out.push(joinRow(header));
-}
-for (const r of rows) out.push(joinRow(r));
-return out.join('\n');
+    if (csvHeader && header) out.push(joinRow(header));
+    for (const r of rows) out.push(joinRow(r));
+    return out.join('\n');
   }
   // Default: fixed width
   return outLines.join('\n');
