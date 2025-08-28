@@ -5,6 +5,7 @@ import { t } from '../i18n.js';
 import { saveTemplate as tplSave } from '../utils.templates.js';
 import ScrollTabs from '../components/ScrollTabs.jsx';
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
+import ConfirmClearModal from '../components/ConfirmClearModal.jsx';
 import { segmentText } from '../segmentation.js';
 import { createWorkbookNewFile, downloadWorkbook } from '../utils/excelMapping';
 
@@ -20,6 +21,7 @@ export default function Home() {
 
   // Generated tabs change counter (textarea auto-refresh)
   const [genTabsVersion, setGenTabsVersion] = useState(0);
+  const [isClearOpen, setIsClearOpen] = useState(false);
   const bumpGenTabs = React.useCallback(() => setGenTabsVersion(v => v + 1), []);
   useEffect(() => { try { localStorage.setItem('tcf_csv_mode', csvMode ? '1' : '0'); } catch (e) {} }, [csvMode]);
   useEffect(() => { try { localStorage.setItem('tcf_csv_sep', csvSep || ';'); } catch (e) {} }, [csvSep]);
@@ -834,12 +836,12 @@ return out.join('\n');
     setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 1500);
   };
   
-const clearForm = () => {
+const clearForm = (force = false) => {
   if (!iface) return;
   // Confirm
-  const ok = (typeof window !== 'undefined' && window.confirm)
+  const ok = force ? true : ((typeof window !== 'undefined' && window.confirm)
     ? window.confirm(t('confirmClearAll') || 'Na pewno wyczyścić pola, podsekcje i kolory?')
-    : true;
+    : true);
   if (!ok) return;
 
   // 1) Clear all field values for this interface
@@ -1300,7 +1302,7 @@ if (!iface) return null;
 </div>
               ) : (
               <div className="actions" style={{margin:'12px 0 0 0', display:'flex', justifyContent:'flex-end'}}>
-                <button onClick={clearForm}>{t('clear') || 'Wyczyść interfejs'}</button>
+                <button onClick={()=> setIsClearOpen(true)}>{t('clear') || 'Wyczyść interfejs'}</button>
               </div>
               )}
 
@@ -1552,7 +1554,12 @@ if (!iface) return null;
       {!dockOpen && (
         <button className="dock-fab" onClick={() => setDockOpen(true)} title={segmentMode ? t('fill') : t('result')}>⯅</button>
       )}
-    </main>
+            <ConfirmClearModal
+          open={isClearOpen}
+          onClose={()=> setIsClearOpen(false)}
+          onConfirm={()=>{ clearForm(true); setIsClearOpen(false); }}
+        />
+      </main>
   );
 }
 
