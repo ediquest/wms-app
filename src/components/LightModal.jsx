@@ -16,6 +16,7 @@ export default function LightModal({ open, onClose, title, children, footer }){
   }, [open, onClose]);
 
   if (!open) return null;
+  
   return createPortal(
     <div className="lm-backdrop" onMouseDown={(e)=>{ if(e.target===e.currentTarget) onClose?.(); }}>
       <div className="lm-dialog" role="dialog" aria-modal="true" aria-labelledby="lm-title">

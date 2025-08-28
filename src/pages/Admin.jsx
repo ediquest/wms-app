@@ -10,6 +10,7 @@ import ScrollTabs from '../components/ScrollTabs.jsx'
 
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
 import AddInterfaceModal from '../components/AddInterfaceModal.jsx';
+import ImportBackupModal from '../components/ImportBackupModal.jsx';
 // --- helpers: wykrywanie i normalizacja pojedynczego interfejsu ---
 function isSingleInterface(obj) {
   if (!obj || !Array.isArray(obj.sections)) return false;
@@ -109,7 +110,7 @@ function expandFieldsToFlat(iface){
 function importFromJsonTop(obj, cfg, setCfg, t) {
   const isBackup = obj && Array.isArray(obj.interfaces) && Array.isArray(obj.categories);
   if (isBackup) {
-    const next = { ...cfg };
+    const next = { ...cfg, categories: [...cfg.categories], interfaces: [...cfg.interfaces] };
     const have = new Set(next.categories.map(c => c.id));
     obj.categories.forEach(c => { if (!have.has(c.id)) next.categories.push({ id: c.id, name: c.name }); });
     const byId = new Map(next.interfaces.map(i => [i.id, i]));
@@ -228,8 +229,81 @@ function normalizeConfig(cfg){
 }
 
 export default function Admin({ role }){
+  function openImportBackupModal(){
+    try {
+      
+      
+      // alert(t('importBackup') || 'Import Backup');
+    } catch (e) {}
+    setIsBackupOpen(true);
+    try {  } catch (e) {}
+  }
+
   // --- Add Interface modal state ---
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isBackupOpen, setIsBackupOpen] = useState(false);
+  const [importStatus, setImportStatus] = useState(null);
+  const applyBackupData = (data, mode='merge') => {
+    try {
+      if (data && data._type === 'tcf_full_backup' && data.config && data.values) {
+        if (mode === 'replace') {
+          saveConfig(data.config);
+          saveValues(data.values);
+          setCfg(normalizeConfig(data.config));
+          setImportStatus({ kind: 'success', key: 'backupOk' });
+        } else {
+          const newCfg = normalizeConfig(data.config);
+          const merged = { ...cfg, categories: [...cfg.categories], interfaces: [...cfg.interfaces] };
+          const catIds = new Set(merged.categories.map(c=>c.id));
+          for (const c of newCfg.categories||[]) if (!catIds.has(c.id)) merged.categories.push(c);
+          const ifIds = new Set(merged.interfaces.map(i=>i.id));
+          for (const it of newCfg.interfaces||[]) if (!ifIds.has(it.id)) merged.interfaces.push(normalizeInterface(it));
+          saveConfig(merged);
+          setCfg(merged);
+          const valsCur = loadValues();
+          const valsNew = data.values || {};
+          saveValues({ ...valsCur, ...valsNew });
+          setImportStatus({ kind: 'success', key: 'importOk' });
+        }
+        return;
+      }
+      if (data && data.config && data.values) {
+        return applyBackupData({ _type: 'tcf_full_backup', ...data }, mode);
+      }
+      if (Array.isArray(data?.interfaces) || Array.isArray(data?.categories)) {
+        if (mode === 'replace') {
+          const next = normalizeConfig({ ...cfg, interfaces: data.interfaces||[], categories: data.categories||[] });
+          saveConfig(next); setCfg(next);
+        } else {
+          const next = { ...cfg, categories: [...cfg.categories], interfaces: [...cfg.interfaces] };
+          const catIds = new Set(next.categories.map(c=>c.id));
+          for (const c of (data.categories||[])) if (!catIds.has(c.id)) next.categories.push(c);
+          const ifIds = new Set(next.interfaces.map(i=>i.id));
+          for (const it of (data.interfaces||[])) if (!ifIds.has(it.id)) next.interfaces.push(normalizeInterface(it));
+          saveConfig(next); setCfg(next);
+        }
+        setImportStatus({ kind: 'success', key: 'importOk' });
+        return;
+      }
+      if (isSingleInterface(data)) {
+        const next = { ...cfg, categories: [...cfg.categories], interfaces: [...cfg.interfaces] };
+        const idx = next.interfaces.findIndex(i=>i.id === data.id);
+        if (mode === 'replace' && idx >= 0) {
+          next.interfaces = next.interfaces.slice();
+          next.interfaces[idx] = normalizeInterface(data);
+        } else if (idx === -1) {
+          next.interfaces = next.interfaces.concat(normalizeInterface(data));
+        }
+        saveConfig(next); setCfg(next);
+        setImportStatus({ kind: 'success', key: 'importOk' });
+        return;
+      }
+      setImportStatus({ kind: 'error', key: 'invalidJson' });
+    } catch (err) {
+      console.error(err);
+      setImportStatus({ kind: 'error', key: 'invalidJson' });
+    }
+  };
 
   const createInterfaceFromModal = ({ id, name, categoryId, cloneId }) => {
     const exists = cfg.interfaces.some(i => i.id === id);
@@ -720,10 +794,10 @@ const sortedInterfaces = useMemo(() => {
               </div>
             </div>
             <div className="actions">
-              <button onClick={()=>setIsAddOpen(true)}>{t('newInterfaceTitle')}</button>
-              <button onClick={exportAll}>{t('export')}</button>
-              <button onClick={() => backupFileRef.current?.click()}>{t('importBackup') || 'Import Backup'}</button>
-              <button onClick={() => fileInputRef.current?.click()}>{t('import')}</button>
+              <button type="button" onClick={()=>setIsAddOpen(true)}>{t('newInterfaceTitle')}</button>
+              <button type="button" onClick={exportAll}>{t('export')}</button>
+              <button type="button" onClick={()=>setIsBackupOpen(true)}>{t('importBackup') || 'Import Backup'}</button>
+              <button type="button" onClick={() => fileInputRef.current?.click()}>{t('import')}</button>
               <DataImportButtons cfg={cfg} setCfg={setCfg} t={t} />
 
               <input ref={fileInputRef} type="file" accept="application/json" style={{display:'none'}} onChange={(e)=>
@@ -779,7 +853,7 @@ const sortedInterfaces = useMemo(() => {
           type="text"
           value={i.ifaceType || ''}
           onChange={(e) => {
-            const next = { ...cfg };
+            const next = { ...cfg, categories: [...cfg.categories], interfaces: [...cfg.interfaces] };
             const x = next.interfaces.find(x => x.id === i.id);
             if (x) x.ifaceType = e.target.value;
             saveConfig(next); setCfg(next);
@@ -789,7 +863,7 @@ const sortedInterfaces = useMemo(() => {
       </td>
       <td>
         <select value={i.categoryId} onChange={(e) => {
-          const next = { ...cfg };
+          const next = { ...cfg, categories: [...cfg.categories], interfaces: [...cfg.interfaces] };
           const x = next.interfaces.find(x => x.id === i.id);
           if (x) x.categoryId = e.target.value;
           saveConfig(next); setCfg(next);
@@ -847,6 +921,12 @@ const sortedInterfaces = useMemo(() => {
           categories={cfg.categories}
           interfaces={cfg.interfaces}
           onSubmit={createInterfaceFromModal}
+        />
+
+        <ImportBackupModal status={importStatus}
+          open={isBackupOpen}
+          onClose={()=>{ setIsBackupOpen(false); setImportStatus(null); }}
+          onImport={applyBackupData}
         />
 </main>
     )
@@ -1020,6 +1100,12 @@ const sortedInterfaces = useMemo(() => {
           categories={cfg.categories}
           interfaces={cfg.interfaces}
           onSubmit={createInterfaceFromModal}
+        />
+
+        <ImportBackupModal status={importStatus}
+          open={isBackupOpen}
+          onClose={()=>{ setIsBackupOpen(false); setImportStatus(null); }}
+          onImport={applyBackupData}
         />
 </main>
   )
