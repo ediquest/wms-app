@@ -758,8 +758,6 @@ return () => clearTimeout(timer);
     return { ok:true };
   };
   const saveAsTemplate = async () => {
-    const g = guard();
-    if (!g.ok) { alert(g.reason==='required'? t('notAllRequired') : t('invalidNumeric')); return; }
     const name = window.prompt(t('templateNamePrompt') || 'Template name:');
     if (!name) return;
     const isMulti = !!combineAll;
@@ -782,8 +780,6 @@ return () => clearTimeout(timer);
 
 
   const copyResult = async () => {
-    const g = guard();
-    if (!g.ok) { alert(g.reason==='required'? t('notAllRequired') : t('invalidNumeric')); return; }
     try {
       await navigator.clipboard.writeText(finalText);
       setCopiedFlash(false); // reset to allow retrigger
@@ -796,8 +792,6 @@ return () => clearTimeout(timer);
     }
   };
   const downloadResult = async () => {
-    const g = guard();
-    if (!g.ok) { alert(g.reason==='required'? t('notAllRequired') : t('invalidNumeric')); return; }
     const name = iface?.name?.trim() || 'interface';
     const fileName = `${name}_${timestamp()}.txt`.replace(/\\s+/g,'_');
     const blob = new Blob([finalText], { type:'text/plain;charset=utf-8' });
@@ -890,11 +884,32 @@ const clearForm = () => {
 
       // Persist generated tabs per interface
       try {
+        
+      // Persist generated tabs per interface — update only those touched by this segmentation
+      try {
         for (const it of (cfg?.interfaces || [])) {
           const id = it.id;
-          const list = (tabsById && typeof tabsById.get === 'function') ? (tabsById.get(id) || []) : [];
-          localStorage.setItem('tcf_genTabs_' + String(id), JSON.stringify(list || []));
+          const key = 'tcf_genTabs_' + String(id);
+          let nextArr = undefined;
+
+          try {
+            if (tabsById && typeof tabsById.get === 'function') {
+              nextArr = tabsById.has(id) ? (tabsById.get(id) || []) : undefined;
+            } else if (tabsById && typeof tabsById === 'object') {
+              nextArr = Object.prototype.hasOwnProperty.call(tabsById, id) ? (tabsById[id] || []) : undefined;
+            }
+          } catch (e) {
+            nextArr = undefined;
+          }
+
+          if (typeof nextArr === 'undefined') {
+            // untouched in this run — keep previous value
+            continue;
+          }
+          localStorage.setItem(key, JSON.stringify(nextArr || []));
         }
+      } catch (e) {}
+    
       } catch (e) {}
 
       // Update values
@@ -902,7 +917,27 @@ const clearForm = () => {
       saveValues(nextVals);
 
       // Recompute usage for Introduction badges
-      applySectionUsage(nextVals, tabsById);
+      
+      // Build merged view of tabs: take fresh tabs for touched interfaces, keep stored for others
+      const tabsMerged = new Map();
+      try {
+        for (const it of (cfg?.interfaces || [])) {
+          const id = it.id;
+          const key = 'tcf_genTabs_' + String(id);
+          let fromSeg = undefined;
+          if (tabsById && typeof tabsById.get === 'function') {
+            fromSeg = tabsById.has(id) ? (tabsById.get(id) || undefined) : undefined;
+          } else if (tabsById && typeof tabsById === 'object') {
+            fromSeg = Object.prototype.hasOwnProperty.call(tabsById, id) ? (tabsById[id] || undefined) : undefined;
+          }
+          let stored = [];
+          try { stored = JSON.parse(localStorage.getItem(key) || '[]') || []; } catch (e) { stored = []; }
+          tabsMerged.set(id, (typeof fromSeg !== 'undefined') ? (fromSeg || []) : (stored || []));
+        }
+      } catch (e) {}
+
+      applySectionUsage(nextVals, tabsMerged);
+    
 
                   // Auto-enable Multi if >= 2 interfaces (involvedIfaceIds ∪ ids with generated tabs)
       try {
@@ -1129,6 +1164,23 @@ const clearSection = () => {
       try { alert('Segmentacja nie powiodła się: ' + (e?.message || e)); } catch (e) {}
     }
   }
+  // === LIVE SECTION USAGE SYNC (valsMap -> includedSections) ===
+  React.useEffect(() => {
+    const h = setTimeout(() => {
+      try {
+        const tabsById = new Map();
+        for (const it of (cfg?.interfaces || [])) {
+          try {
+            const raw = localStorage.getItem('tcf_genTabs_' + String(it.id));
+            const arr = JSON.parse(raw || '[]') || [];
+            tabsById.set(it.id, Array.isArray(arr) ? arr : []);
+          } catch (e) { tabsById.set(it.id, []); }
+        }
+        applySectionUsage(valsMap, tabsById);
+      } catch (e) {}
+    }, 150);
+    return () => clearTimeout(h);
+  }, [valsMap]);
 if (!iface) return null;
 
   // Indices ordering & defaults first
@@ -1136,6 +1188,7 @@ if (!iface) return null;
   const defSet = new Set((iface.defaultFields || []).map(df => (df.label || '').toLowerCase()));
   const isDef = (idx) => defSet.has((iface.labels[idx] || '').toLowerCase());
   const orderedInSec = indicesInSec.slice().sort((a, b) => (isDef(b) ? 1 : 0) - (isDef(a) ? 1 : 0));
+
 
   return (
     <main className="wrap wide">
