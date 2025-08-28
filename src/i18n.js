@@ -202,7 +202,11 @@ maxLenFlex: 'Max length: FLEX',    importDone: "Import done.",    csvHasHeader: 
       chooseTargetInterface: "Choose target interface",
       cannotUndo: "This action cannot be undone.",
       alsoDeleteValues: "Also delete associated values",
-  },
+    newCategoryTitle: "New category",
+    errCatIdRequired: "Enter category ID",
+    errCatIdFormat: "ID can contain only letters, digits, '-' and '_'",
+    errCatIdTaken: "A category with this ID already exists",
+    errCatNameRequired: "Enter category name"},
 
   pl: {
     preserveLayout: 'Zachowaj układ (nie dodawaj arkusza "Original Interface")',
@@ -394,7 +398,11 @@ maxLenFlex: 'Maks. długość: FLEX',    importDone: "Import zakończony.",    c
       chooseTargetInterface: "Wybierz interfejs docelowy",
       cannotUndo: "Tej operacji nie można cofnąć.",
       alsoDeleteValues: "Usuń także powiązane wartości",
-  },
+    newCategoryTitle: "Nowa kategoria",
+    errCatIdRequired: "Wpisz ID kategorii",
+    errCatIdFormat: "ID może zawierać tylko litery, cyfry, „-” i „_”",
+    errCatIdTaken: "Kategoria o takim ID już istnieje",
+    errCatNameRequired: "Wpisz nazwę kategorii"},
 
   fr: {
     segEmpty: 'Collez d’abord du texte à segmenter.',
@@ -556,7 +564,11 @@ maxLenFlex: 'Longueur max : FLEX',
       chooseTargetInterface: "Choisir l'interface cible",
       cannotUndo: "Cette action est irréversible.",
       alsoDeleteValues: "Supprimer aussi les valeurs associées",
-  },
+    newCategoryTitle: "Nouvelle catégorie",
+    errCatIdRequired: "Saisissez l’ID de la catégorie",
+    errCatIdFormat: "L’ID ne peut contenir que des lettres, chiffres, « - » et « _ »",
+    errCatIdTaken: "Une catégorie avec cet ID existe déjà",
+    errCatNameRequired: "Saisissez le nom de la catégorie"},
 
   cs: {
     segEmpty: 'Nejprve vložte text k segmentaci.',
@@ -729,7 +741,11 @@ maxLenFlex: 'Max. délka: FLEX',
       chooseTargetInterface: "Vyberte cílové rozhraní",
       cannotUndo: "Tuto akci nelze vrátit zpět.",
       alsoDeleteValues: "Smazat také související hodnoty",
-  },
+    newCategoryTitle: "Nová kategorie",
+    errCatIdRequired: "Zadejte ID kategorie",
+    errCatIdFormat: "ID může obsahovat pouze písmena, číslice, '-' a '_'",
+    errCatIdTaken: "Kategorie s tímto ID již existuje",
+    errCatNameRequired: "Zadejte název kategorie"},
 
   de: {
     segEmpty: 'Fügen Sie zuerst Text zum Segmentieren ein.',
@@ -892,7 +908,11 @@ maxLenFlex: 'Max. Länge: FLEX',
       chooseTargetInterface: "Ziel-Schnittstelle wählen",
       cannotUndo: "Diese Aktion kann nicht rückgängig gemacht werden.",
       alsoDeleteValues: "Zugehörige Werte ebenfalls löschen",
-  },
+    newCategoryTitle: "Neue Kategorie",
+    errCatIdRequired: "Geben Sie die Kategorie-ID ein",
+    errCatIdFormat: "Die ID darf nur Buchstaben, Ziffern, „-“ und „_“ enthalten",
+    errCatIdTaken: "Eine Kategorie mit dieser ID existiert bereits",
+    errCatNameRequired: "Geben Sie den Kategorienamen ein"},
 
   es: {
     segEmpty: 'Pega texto primero para segmentar.',
@@ -1070,7 +1090,11 @@ notice: "Aviso",
       chooseTargetInterface: "Elige interfaz de destino",
       cannotUndo: "Esta acción no se puede deshacer.",
       alsoDeleteValues: "Eliminar también los valores asociados",
-  },
+    newCategoryTitle: "Nueva categoría",
+    errCatIdRequired: "Introduce el ID de la categoría",
+    errCatIdFormat: "El ID solo puede contener letras, dígitos, '-' y '_'",
+    errCatIdTaken: "Ya existe una categoría con este ID",
+    errCatNameRequired: "Introduce el nombre de la categoría"},
 
   it: {
     add: "Aggiungi",
@@ -1121,7 +1145,11 @@ notice: "Aviso",
       chooseTargetInterface: "Scegli l'interfaccia di destinazione",
       cannotUndo: "Questa azione non può essere annullata.",
       alsoDeleteValues: "Elimina anche i valori associati",
-  },
+    newCategoryTitle: "Nuova categoria",
+    errCatIdRequired: "Inserisci l’ID della categoria",
+    errCatIdFormat: "L’ID può contenere solo lettere, numeri, “-” e “_”",
+    errCatIdTaken: "Esiste già una categoria con questo ID",
+    errCatNameRequired: "Inserisci il nome della categoria"},
 
 it: {
     segEmpty: 'Incolla prima il testo da segmentare.',
@@ -1272,7 +1300,11 @@ notice: "Avviso",
   minified: 'Minificato',
   onlyFilled: 'Solo compilati',
   maxLenFlex: 'Lunghezza max: FLEX',    importDone: "Importazione completata.",    csvHasHeader: "Il CSV ha un’intestazione nella prima riga?",
-}
+    newCategoryTitle: "Nuova categoria",
+    errCatIdRequired: "Inserisci l’ID della categoria",
+    errCatIdFormat: "L’ID può contenere solo lettere, numeri, “-” e “_”",
+    errCatIdTaken: "Esiste già una categoria con questo ID",
+    errCatNameRequired: "Inserisci il nome della categoria"}
 
 
 };

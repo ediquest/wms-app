@@ -10,6 +10,7 @@ import ScrollTabs from '../components/ScrollTabs.jsx'
 
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
 import AddInterfaceModal from '../components/AddInterfaceModal.jsx';
+import AddCategoryModal from '../components/AddCategoryModal.jsx';
 import ImportBackupModal from '../components/ImportBackupModal.jsx';
 import ImportWmsModal from '../components/ImportWmsModal.jsx';
 import DeleteInterfaceModal from '../components/DeleteInterfaceModal.jsx';
@@ -243,7 +244,8 @@ export default function Admin({ role }){
 
   // --- Add Interface modal state ---
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [isBackupOpen, setIsBackupOpen] = useState(false);
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isWmsOpen, setIsWmsOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -355,21 +357,27 @@ export default function Admin({ role }){
     }
   };
 
+    const createCategoryFromModal = ({ id, name }) => {
+    const next = { ...cfg, categories: [...cfg.categories] };
+    if (next.categories.some(c => c.id === id)) return; // guard
+    next.categories.push({ id, name });
+    saveConfig(next);
+    setCfg(next);
+  };
+
   const createInterfaceFromModal = ({ id, name, categoryId, cloneId }) => {
-    const exists = cfg.interfaces.some(i => i.id === id);
-    if (exists) { alert('Interfejs o takim ID już istnieje.'); return; }
     let nextIface;
     if (cloneId) {
-      // clone existing one by ID
       const base = cfg.interfaces.find(i => i.id === cloneId);
       if (!base) { alert('Wybrany interfejs do skopiowania nie istnieje.'); return; }
       nextIface = JSON.parse(JSON.stringify(base));
       nextIface.id = id;
-      nextIface.name = name;
-      nextIface.categoryId = categoryId || base.categoryId;
     } else {
       nextIface = normalizeInterface({
-        id, name: name.trim(), categoryId: categoryId || (cfg.categories[0]?.id || 'inbound'), summary: '',
+        id,
+        name: name.trim(),
+        categoryId: categoryId || (cfg.categories[0]?.id || 'inbound'),
+        summary: '',
         labels: [], descriptions: [], lengths: [], required: [], types: [], flexFields: [],
         sections: ['Introduction'], sectionNumbers: ['000'], fieldSections: [], separators: [],
         defaultFields: (cfg.defaultFields||[])
@@ -957,7 +965,7 @@ const sortedInterfaces = useMemo(() => {
           </tbody>
         </table>
         <div className="actions" style={{marginTop:8}}>
-          <button onClick={()=>{ const name=prompt('Nazwa nowej kategorii:'); if(!name||!name.trim()) return; const id=name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'').slice(0,32)||('cat-'+Date.now()); if(cfg.categories.some(x=>x.id===id)){ alert('ID już istnieje'); return; } const next={...cfg, categories: cfg.categories.concat({id, name:name.trim()})}; saveConfig(next); setCfg(next); }}>{t('addCategory')}</button>
+          <button onClick={()=> setIsAddCategoryOpen(true)}>{t('addCategory')}</button>
         </div>
       </section>
     
@@ -990,6 +998,14 @@ const sortedInterfaces = useMemo(() => {
           target={deleteTarget}
           onClose={()=>{ setIsDeleteOpen(false); setDeleteTarget(null); }}
           onConfirm={({removeValues})=>{ if (deleteTarget) { deleteOne(deleteTarget.id, removeValues); } setIsDeleteOpen(false); setDeleteTarget(null); }}
+        />
+
+      
+        <AddCategoryModal
+          open={isAddCategoryOpen}
+          categories={cfg.categories}
+          onClose={()=> setIsAddCategoryOpen(false)}
+          onSubmit={(payload)=>{ createCategoryFromModal(payload); }}
         />
 
       </main>
@@ -1152,7 +1168,7 @@ const sortedInterfaces = useMemo(() => {
           </tbody>
         </table>
         <div className="actions" style={{marginTop:8}}>
-          <button onClick={()=>{ const name=prompt('Nazwa nowej kategorii:'); if(!name||!name.trim()) return; const id=name.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'').slice(0,32)||('cat-'+Date.now()); if(cfg.categories.some(x=>x.id===id)){ alert('ID już istnieje'); return; } const next={...cfg, categories: cfg.categories.concat({id, name:name.trim()})}; saveConfig(next); setCfg(next); }}>{t('addCategory')}</button>
+          <button onClick={()=> setIsAddCategoryOpen(true)}>{t('addCategory')}</button>
         </div>
       </section>
     
@@ -1185,6 +1201,14 @@ const sortedInterfaces = useMemo(() => {
           target={deleteTarget}
           onClose={()=>{ setIsDeleteOpen(false); setDeleteTarget(null); }}
           onConfirm={({removeValues})=>{ if (deleteTarget) { deleteOne(deleteTarget.id, removeValues); } setIsDeleteOpen(false); setDeleteTarget(null); }}
+        />
+
+      
+        <AddCategoryModal
+          open={isAddCategoryOpen}
+          categories={cfg.categories}
+          onClose={()=> setIsAddCategoryOpen(false)}
+          onSubmit={(payload)=>{ createCategoryFromModal(payload); }}
         />
 
       </main>
