@@ -147,9 +147,8 @@ jsonMode: 'JSON mode',
 jsonArray: 'JSON as array',
 minified: 'Minified',
 onlyFilled: 'Only filled',
-maxLenFlex: 'Max length: FLEX',
-
-  },
+maxLenFlex: 'Max length: FLEX',    importDone: "Import done.",    csvHasHeader: "Does the CSV have a header in the first line?",
+},
 
   pl: {
     preserveLayout: 'Zachowaj układ (nie dodawaj arkusza "Original Interface")',
@@ -286,9 +285,8 @@ jsonMode: 'Tryb JSON',
 jsonArray: 'JSON jako tablica',
 minified: 'Zminifikowany',
 onlyFilled: 'Tylko wypełnione',
-maxLenFlex: 'Maks. długość: FLEX',
-
-  },
+maxLenFlex: 'Maks. długość: FLEX',    importDone: "Import zakończony.",    csvHasHeader: "Czy CSV ma nagłówek w 1. linii?",
+},
 
   fr: {
     segEmpty: 'Collez d’abord du texte à segmenter.',
@@ -404,9 +402,8 @@ minified: 'Minifié',
 onlyFilled: 'Uniquement remplis',
 maxLenFlex: 'Longueur max : FLEX',
   searchAria: 'Rechercher',
-  clear: 'Effacer',
-
-  },
+  clear: 'Effacer',    importDone: "Import terminé.",    csvHasHeader: "Le CSV contient-il un en-tête à la première ligne ?",
+},
 
   cs: {
     segEmpty: 'Nejprve vložte text k segmentaci.',
@@ -524,9 +521,8 @@ minified: 'Minifikované',
 onlyFilled: 'Jen vyplněná',
 maxLenFlex: 'Max. délka: FLEX',
   searchAria: 'Hledat',
-  clear: 'Vyčistit',
-
-  },
+  clear: 'Vyčistit',    importDone: "Import dokončen.",    csvHasHeader: "Obsahuje CSV hlavičku v prvním řádku?",
+},
 
   de: {
     segEmpty: 'Fügen Sie zuerst Text zum Segmentieren ein.',
@@ -642,9 +638,8 @@ minified: 'Minimiert',
 onlyFilled: 'Nur ausgefüllte',
 maxLenFlex: 'Max. Länge: FLEX',
     searchAria: 'Suchen',
-    clear: 'Leeren',
-
-  },
+    clear: 'Leeren',    importDone: "Import abgeschlossen.",    csvHasHeader: "Hat die CSV in der ersten Zeile eine Kopfzeile?",
+},
 
   es: {
     segEmpty: 'Pega texto primero para segmentar.',
@@ -776,7 +771,7 @@ maxLenFlex: 'Max. Länge: FLEX',
   jsonArray: 'JSON como array',
   minified: 'Minificado',
   onlyFilled: 'Solo rellenados',
-  maxLenFlex: 'Longitud máx.: FLEX',
+  maxLenFlex: 'Longitud máx.: FLEX',    importDone: "Importación completada.",    csvHasHeader: "¿El CSV tiene cabecera en la primera línea?",
 },
 
 it: {
@@ -909,7 +904,7 @@ it: {
   jsonArray: 'JSON come array',
   minified: 'Minificato',
   onlyFilled: 'Solo compilati',
-  maxLenFlex: 'Lunghezza max: FLEX',
+  maxLenFlex: 'Lunghezza max: FLEX',    importDone: "Importazione completata.",    csvHasHeader: "Il CSV ha un’intestazione nella prima riga?",
 }
 
 

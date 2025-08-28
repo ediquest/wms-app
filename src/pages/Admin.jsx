@@ -1,3 +1,4 @@
+import DataImportButtons from '../components/DataImportButtons.jsx';
 
 
 // --- helpers: wykrywanie i normalizacja pojedynczego interfejsu ---
@@ -687,6 +688,8 @@ const sortedInterfaces = useMemo(() => {
               <button onClick={exportAll}>{t('export')}</button>
               <button onClick={() => backupFileRef.current?.click()}>{t('importBackup') || 'Import Backup'}</button>
               <button onClick={() => fileInputRef.current?.click()}>{t('import')}</button>
+              <DataImportButtons cfg={cfg} setCfg={setCfg} t={t} />
+
               <input ref={fileInputRef} type="file" accept="application/json" style={{display:'none'}} onChange={(e)=>
 { const f=e.target.files&&e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const txt=String(r.result).replace(/^\uFEFF/, ''); const obj=JSON.parse(txt); importFromJsonTop(obj, cfg, setCfg, t); }catch(err){ console.error('[import] parse error', err); alert(t('invalidJson')||'Nieprawidłowy plik JSON.'); } }; r.readAsText(f); e.target.value=''; }} />
               
