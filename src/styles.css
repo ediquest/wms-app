@@ -1071,3 +1071,72 @@ textarea::-webkit-scrollbar-corner{ background:var(--sb-corner); }
   background: var(--card, #0b1026);
 }
 
+
+
+/* Export mapping button baseline */
+.btn.export-mapping-btn {
+  border-radius: 999px;
+  border: 1px solid var(--border, #2a2f34);
+  background: transparent;
+  padding: 6px 10px;
+}
+.btn.export-mapping-btn:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+.btn.export-mapping-btn{
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 12px;
+  border-radius:10px;
+  border:1px solid var(--border, #2a2f34);
+  background:transparent;
+  color:inherit;
+  cursor:pointer;
+}
+.btn.export-mapping-btn:hover{
+  background:rgba(255,255,255,0.06);
+}
+.btn.export-mapping-btn svg{ display:block; }
+
+/* === Export Mapping button – force consistent look === */
+.actions .export-mapping-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;              /* mniej zaokrąglony */
+  border: 1px solid var(--border, rgba(255,255,255,0.18));
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  box-sizing: border-box;
+  line-height: 1;
+  text-decoration: none;
+  vertical-align: middle;
+  margin-left: 8px;                 /* odstęp od poprzedniego przycisku */
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+:root.light .export-mapping-btn,
+[data-theme="light"] .export-mapping-btn {
+  border-color: rgba(0,0,0,0.18);
+}
+
+.actions .export-mapping-btn:hover {
+  background: rgba(255,255,255,0.06);
+}
+:root.light .export-mapping-btn:hover,
+[data-theme="light"] .export-mapping-btn:hover {
+  background: rgba(0,0,0,0.06);
+}
+
+.actions .export-mapping-btn__content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1;
+}
+
+.actions .export-mapping-btn svg { display: block; }
+.actions .export-mapping-btn svg path:first-child { opacity: .18; } /* delikatne tło ikonki */

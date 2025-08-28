@@ -6,6 +6,7 @@ import { saveTemplate as tplSave } from '../utils.templates.js';
 import ScrollTabs from '../components/ScrollTabs.jsx';
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
 import { segmentText } from '../segmentation.js';
+import { createWorkbookNewFile, downloadWorkbook } from '../utils/excelMapping';
 
 export default function Home() {
   // Router info (declare ONCE inside the component)
@@ -1481,11 +1482,39 @@ if (!iface) return null;
                   </button>
                 ) : null}
               </div>
+
 <div className="actions" style={{justifyContent:'flex-end'}}>
               <button onClick={copyResult}>{t('copy')}</button>
               <button onClick={downloadResult}>{t('download')}</button>
                           <button onClick={saveAsTemplate}>{t('saveAsTemplate') || 'Zapisz jako schemat'}</button>
-            </div>
+            
+<button
+  onClick={() => {
+    if (combineAll) {
+      try { alert(t('onlySingleMode') || 'Opcja dostępna tylko w trybie pojedynczego interfejsu.'); } catch (e) {}
+      return;
+    }
+    try {
+      const wb = createWorkbookNewFile(iface, valsMap, finalText);
+      downloadWorkbook(wb, 'mapping.xlsx');
+    } catch (e) {
+      console.error(e);
+      try { alert(t('excelExportError') || 'Export do Excel nie powiódł się.'); } catch (_e) {}
+    }
+  }}
+  title={t('exportMapping') || 'Eksportuj mapowanie'}
+  className="export-mapping-btn"
+>
+  <span className="export-mapping-btn__content">
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 3h9l5 5v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z" fill="currentColor" opacity="0.15"/>
+      <path d="M13 3v5h5" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+      <path d="M8.5 9l3 6m0-6l-3 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+    </svg>
+    <span>{t('exportMapping') || 'Eksportuj mapowanie'}</span>
+  </span>
+</button>
+</div>
           </div>
         </div>
       </div>
