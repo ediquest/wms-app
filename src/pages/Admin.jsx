@@ -11,6 +11,7 @@ import ScrollTabs from '../components/ScrollTabs.jsx'
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
 import AddInterfaceModal from '../components/AddInterfaceModal.jsx';
 import AddCategoryModal from '../components/AddCategoryModal.jsx';
+import RenameCategoryModal from '../components/RenameCategoryModal.jsx';
 import ImportBackupModal from '../components/ImportBackupModal.jsx';
 import ImportWmsModal from '../components/ImportWmsModal.jsx';
 import DeleteInterfaceModal from '../components/DeleteInterfaceModal.jsx';
@@ -245,6 +246,8 @@ export default function Admin({ role }){
   // --- Add Interface modal state ---
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const [renameTarget, setRenameTarget] = useState(null);
 const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [isWmsOpen, setIsWmsOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -364,6 +367,16 @@ const [isBackupOpen, setIsBackupOpen] = useState(false);
     saveConfig(next);
     setCfg(next);
   };
+  const renameCategoryFromModal = ({ id, name }) => {
+    const next = { ...cfg, categories: [...cfg.categories] };
+    const idx = next.categories.findIndex(c => c.id === id);
+    if (idx === -1) return;
+    next.categories = next.categories.slice();
+    next.categories[idx] = { ...next.categories[idx], name };
+    saveConfig(next);
+    setCfg(next);
+  };
+
 
   const createInterfaceFromModal = ({ id, name, categoryId, cloneId }) => {
     let nextIface;
@@ -956,7 +969,7 @@ const sortedInterfaces = useMemo(() => {
                   <td>{c.name}</td>
                   <td>{count}</td>
                   <td className="table-actions">
-                    <button onClick={()=>{ const name=prompt('Nowa nazwa kategorii:', c.name); if(!name||!name.trim()) return; const next={...cfg, categories: cfg.categories.map(x=> x.id===c.id?{...x, name:name.trim()}:x)}; saveConfig(next); setCfg(next); }}>{t('renameCategory')}</button>
+                    <button onClick={()=>{ setRenameTarget({id:c.id, name:c.name}); setIsRenameOpen(true); }}>{t('renameCategory')}</button>
                     <button className="danger" onClick={()=>{ if(count>0){ alert('Najpierw przenieś interfejsy do innej kategorii.'); return; } if(!confirm('Usunąć kategorię?')) return; const next={...cfg, categories: cfg.categories.filter(x=> x.id!==c.id)}; saveConfig(next); setCfg(next); }}>Usuń</button>
                   </td>
                 </tr>
@@ -1008,6 +1021,13 @@ const sortedInterfaces = useMemo(() => {
           onSubmit={(payload)=>{ createCategoryFromModal(payload); }}
         />
 
+      
+        <RenameCategoryModal
+          open={isRenameOpen}
+          target={renameTarget}
+          onClose={()=>{ setIsRenameOpen(false); setRenameTarget(null); }}
+          onSubmit={renameCategoryFromModal}
+        />
       </main>
     )
   }
@@ -1159,7 +1179,7 @@ const sortedInterfaces = useMemo(() => {
                   <td>{c.name}</td>
                   <td>{count}</td>
                   <td className="table-actions">
-                    <button onClick={()=>{ const name=prompt('Nowa nazwa kategorii:', c.name); if(!name||!name.trim()) return; const next={...cfg, categories: cfg.categories.map(x=> x.id===c.id?{...x, name:name.trim()}:x)}; saveConfig(next); setCfg(next); }}>{t('renameCategory')}</button>
+                    <button onClick={()=>{ setRenameTarget({id:c.id, name:c.name}); setIsRenameOpen(true); }}>{t('renameCategory')}</button>
                     <button className="danger" onClick={()=>{ if(count>0){ alert('Najpierw przenieś interfejsy do innej kategorii.'); return; } if(!confirm('Usunąć kategorię?')) return; const next={...cfg, categories: cfg.categories.filter(x=> x.id!==c.id)}; saveConfig(next); setCfg(next); }}>Usuń</button>
                   </td>
                 </tr>

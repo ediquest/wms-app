@@ -1149,8 +1149,7 @@ notice: "Aviso",
     errCatIdRequired: "Inserisci l’ID della categoria",
     errCatIdFormat: "L’ID può contenere solo lettere, numeri, “-” e “_”",
     errCatIdTaken: "Esiste già una categoria con questo ID",
-    errCatNameRequired: "Inserisci il nome della categoria",
-    renameCategory: "Rinomina categoria"},
+    errCatNameRequired: "Inserisci il nome della categoria"},
 
 it: {
     segEmpty: 'Incolla prima il testo da segmentare.',
