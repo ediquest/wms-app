@@ -118,6 +118,24 @@ const dict = {
     exportOk: 'Export done.',
     importOneOk: 'Interface imported.',
 
+    // Modal
+      importJsonTitle: "Import JSON",
+  cancel: "Cancel",
+  importJson: "Import JSON",
+  chooseJson: "Choose a JSON file to import",
+  chooseFile: "Choose file",
+  dropHere: "Drag & drop a file here or click “Choose file”.",
+  duplicateNameWarn: "An interface with this name already exists — a copy will be added.",
+  invalidJson: "Invalid JSON.",
+
+  importCsvTitle: "Import CSV",
+importCsv: "Import CSV",
+chooseCsv: "Choose a CSV file to import",
+csvSeparator: "Separator",
+invalidCsv: "Failed to parse CSV.",
+ok: "OK",
+notice: "Notice",
+
     // Workspace
     workspaceProjects: 'Projects',
     newWorkspace: 'New workspace',
@@ -256,6 +274,24 @@ maxLenFlex: 'Max length: FLEX',    importDone: "Import done.",    csvHasHeader: 
     exportOk: 'Eksport zakończony.',
     importOneOk: 'Interfejs zaimportowany.',
 
+    //Modal
+      importJsonTitle: "Import JSON",
+  cancel: "Anuluj",
+  importJson: "Importuj JSON",
+  chooseJson: "Wybierz plik JSON do importu",
+  chooseFile: "Wybierz plik",
+  dropHere: "Przeciągnij plik tutaj lub kliknij „Wybierz plik”.",
+  duplicateNameWarn: "Interfejs o tej nazwie już istnieje — zostanie dodana kopia.",
+  invalidJson: "Nieprawidłowy JSON.",
+
+  importCsvTitle: "Import CSV",
+importCsv: "Import CSV",
+chooseCsv: "Wybierz plik CSV do importu",
+csvSeparator: "Separator",
+invalidCsv: "Nie udało się sparsować CSV.",
+ok: "OK",
+notice: "Komunikat",
+
     // Workspace
     workspaceProjects: 'Projekty',
     newWorkspace: 'Nowy projekt',
@@ -315,6 +351,24 @@ maxLenFlex: 'Maks. długość: FLEX',    importDone: "Import zakończony.",    c
     home: 'Accueil',
     chooseInterface: 'Accueil',
     clickToGo: 'Choisissez une interface pour commencer',
+
+    //Modal
+      importJsonTitle: "Importer JSON",
+  cancel: "Annuler",
+  importJson: "Importer JSON",
+  chooseJson: "Choisissez un fichier JSON à importer",
+  chooseFile: "Choisir un fichier",
+  dropHere: "Glissez-déposez un fichier ici ou cliquez sur « Choisir un fichier ».",
+  duplicateNameWarn: "Une interface portant ce nom existe déjà — une copie sera ajoutée.",
+  invalidJson: "JSON non valide.",
+
+  importCsvTitle: "Importer CSV",
+importCsv: "Importer CSV",
+chooseCsv: "Choisissez un fichier CSV à importer",
+csvSeparator: "Séparateur",
+invalidCsv: "Échec de l'analyse CSV.",
+ok: "OK",
+notice: "Notification",
     
     fill: 'Remplir',result: 'Résultat',
     copy: 'Copier',
@@ -432,6 +486,32 @@ maxLenFlex: 'Longueur max : FLEX',
     home: 'Domů',
     chooseInterface: 'Domů',
     clickToGo: 'Vyberte rozhraní pro start',
+
+    //Modal
+      importJsonTitle: "Import JSON",
+  cancel: "Zrušit",
+  importJson: "Importovat JSON",
+  chooseJson: "Vyberte soubor JSON k importu",
+  chooseFile: "Vybrat soubor",
+  dropHere: "Přetáhněte soubor sem nebo klikněte na „Vybrat soubor“.",
+  duplicateNameWarn: "Rozhraní s tímto názvem již existuje — bude přidána kopie.",
+  invalidJson: "Neplatný JSON.",
+
+  importCsvTitle: "CSV importieren",
+importCsv: "CSV importieren",
+chooseCsv: "Wählen Sie eine CSV-Datei zum Importieren",
+csvSeparator: "Trennzeichen",
+invalidCsv: "CSV konnte nicht verarbeitet werden.",
+ok: "OK",
+notice: "Hinweis",
+
+  importCsvTitle: "Import CSV",
+importCsv: "Import CSV",
+chooseCsv: "Vyberte soubor CSV k importu",
+csvSeparator: "Oddělovač",
+invalidCsv: "CSV se nepodařilo zpracovat.",
+ok: "OK",
+notice: "Upozornění",
     
     fill: 'Vyplnit',result: 'Výsledek',
     copy: 'Kopírovat',
@@ -551,6 +631,24 @@ maxLenFlex: 'Max. délka: FLEX',
     home: 'Startseite',
     chooseInterface: 'Startseite',
     clickToGo: 'Wähle ein Interface zum Starten',
+
+    //Modal
+      importJsonTitle: "JSON importieren",
+  cancel: "Abbrechen",
+  importJson: "JSON importieren",
+  chooseJson: "Wählen Sie eine JSON-Datei zum Importieren",
+  chooseFile: "Datei auswählen",
+  dropHere: "Datei hierher ziehen oder auf „Datei auswählen“ klicken.",
+  duplicateNameWarn: "Eine Schnittstelle mit diesem Namen existiert bereits — es wird eine Kopie hinzugefügt.",
+  invalidJson: "Ungültiges JSON.",
+
+  importCsvTitle: "CSV importieren",
+importCsv: "CSV importieren",
+chooseCsv: "Wählen Sie eine CSV-Datei zum Importieren",
+csvSeparator: "Trennzeichen",
+invalidCsv: "CSV konnte nicht verarbeitet werden.",
+ok: "OK",
+notice: "Hinweis",
     
     fill: 'Ausfüllen',result: 'Ergebnis',
     copy: 'Kopieren',
@@ -733,6 +831,24 @@ maxLenFlex: 'Max. Länge: FLEX',
   addCategory: 'Añadir categoría',
   fields: 'Campos',
 
+  //Modal
+    importJsonTitle: "Importar JSON",
+  cancel: "Cancelar",
+  importJson: "Importar JSON",
+  chooseJson: "Elige un archivo JSON para importar",
+  chooseFile: "Elegir archivo",
+  dropHere: "Arrastra y suelta un archivo aquí o haz clic en «Elegir archivo».",
+  duplicateNameWarn: "Ya existe una interfaz con este nombre — se añadirá una copia.",
+  invalidJson: "JSON no válido.",
+
+  importCsvTitle: "Importar CSV",
+importCsv: "Importar CSV",
+chooseCsv: "Elige un archivo CSV para importar",
+csvSeparator: "Separador",
+invalidCsv: "No se pudo analizar el CSV.",
+ok: "OK",
+notice: "Aviso",
+
   // Import/Export / Backup
   exportBackup: 'Exportar copia de seguridad',
   importBackup: 'Importar copia de seguridad',
@@ -874,6 +990,24 @@ it: {
   backupOk: 'Backup importato.',
   exportOk: 'Esportazione completata.',
   importOneOk: 'Interfaccia importata.',
+
+  //Modal
+    importJsonTitle: "Importa JSON",
+  cancel: "Annulla",
+  importJson: "Importa JSON",
+  chooseJson: "Scegli un file JSON da importare",
+  chooseFile: "Scegli file",
+  dropHere: "Trascina qui un file oppure clicca su «Scegli file».",
+  duplicateNameWarn: "Esiste già un’interfaccia con questo nome — verrà aggiunta una copia.",
+  invalidJson: "JSON non valido.",
+
+  importCsvTitle: "Importa CSV",
+importCsv: "Importa CSV",
+chooseCsv: "Scegli un file CSV da importare",
+csvSeparator: "Separatore",
+invalidCsv: "Impossibile analizzare il CSV.",
+ok: "OK",
+notice: "Avviso",
 
   // Workspace
   workspaceProjects: 'Progetti',
