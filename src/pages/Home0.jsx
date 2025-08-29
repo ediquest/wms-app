@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState , useRef, useCallback} from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { loadConfig, saveConfig, loadValues, saveValues as saveValuesCore, padToLen, timestamp, loadProjects, saveProjects, snapshotProject, applyProject} from '../utils.js';
+import { loadConfig, saveConfig, loadValues, saveValues, padToLen, timestamp, loadProjects, saveProjects, snapshotProject, applyProject } from '../utils.js';
 import { t } from '../i18n.js';
 import { saveTemplate as tplSave } from '../utils.templates.js';
 import ScrollTabs from '../components/ScrollTabs.jsx';
@@ -16,11 +16,6 @@ export default function Home() {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  // --- anti-echo for local saves (cooldown + wrapper) ---
-  const SAVE_ECHO_COOLDOWN_MS = 2500;
-  const lastLocalSaveTs = useRef(0);
-  const saveValuesLocal = (...args) => { lastLocalSaveTs.current = Date.now(); return saveValuesCore(...args); };
-
   // ===== Export modes (CSV / JSON) =====
   // CSV
   const [csvMode, setCsvMode] = useState(() => { try { return localStorage.getItem('tcf_csv_mode') === '1'; } catch { return false; } });
@@ -276,7 +271,7 @@ const usedIds = useMemo(() => {
       if (idxs.length >= 3) next[idxs[2]] = ifCode  || '';
       if (idxs.length >= 4) next[idxs[3]] = secNum  || '';
       const map = { ...valsMap, [iface.id]: next };
-      setValsMap(map); saveValuesLocal(map);
+      setValsMap(map); saveValues(map);
       return next;
     });
   };
@@ -753,7 +748,7 @@ return out.join('\n');
     if (!isFlex(i)) nextVal = nextVal.slice(0, max);
     setValues(curr => {
       const next = curr.slice(); next[i] = nextVal;
-      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValuesLocal(map);
+      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValues(map);
       return next;
     });
   };
@@ -763,14 +758,14 @@ return out.join('\n');
     if (isFlex(i)) {
     setValues(curr => {
       const next = curr.slice();
-      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValuesLocal(map);
+      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValues(map);
       return next;
     });
     return;
   }
   setValues(curr => {
       const next = curr.slice(); next[i] = padToLen(next[i] ?? '', max);
-      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValuesLocal(map);
+      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValues(map);
       return next;
     });
   };
@@ -873,7 +868,7 @@ const clearForm = (force = false) => {
   setValues(empties);
   const map = { ...valsMap, [iface.id]: empties };
   setValsMap(map);
-  saveValuesLocal(map); // fires tcf-values-changed
+  saveValues(map); // fires tcf-values-changed
 
   // 1b) Reset segmentation UI so textarea switches back to finalText (no leftover 'sekwencja')
   try { setSegmentTextStr(''); setSegmentMode(false); } catch (e) {}
@@ -972,7 +967,7 @@ const clearForm = (force = false) => {
 
       // Update values
       setValsMap(nextVals);
-      saveValuesLocal(nextVals);
+      saveValues(nextVals);
 
       // Recompute usage for Introduction badges
       
@@ -1072,7 +1067,7 @@ const clearSection = (force = false, overrideSec = null) => {
     const idxs = iface.fieldSections.map((s, i) => s === targetSec ? i : -1).filter(i => i !== -1);
     idxs.forEach(i => { arr[i] = ''; });
     setValues(arr);
-    const map = { ...valsMap, [iface.id]: arr }; setValsMap(map); saveValuesLocal(map);
+    const map = { ...valsMap, [iface.id]: arr }; setValsMap(map); saveValues(map);
 
     // Also remove generated subsections (tabs) for this section
     try {
@@ -1131,7 +1126,6 @@ const clearSection = (force = false, overrideSec = null) => {
 
   useEffect(() => {
     const syncFromEvents = () => {
-      if (Date.now() - (lastLocalSaveTs.current || 0) < SAVE_ECHO_COOLDOWN_MS) return;
       if (syncingRef.current) return;
       syncingRef.current = true;
       try {
@@ -1232,7 +1226,7 @@ const clearSection = (force = false, overrideSec = null) => {
         try { localStorage.removeItem('tcf_genTabs_active_' + String(it.id)); } catch (e) {}
       }
       setValsMap(nextVals);
-      saveValuesLocal(nextVals);
+      saveValues(nextVals);
       // reset overlays
       const newCfg = {
         ...cfg,
