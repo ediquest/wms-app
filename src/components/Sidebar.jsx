@@ -1,15 +1,21 @@
 // Sidebar.jsx — Workspace-only navigation (Projects removed)
 import React, { useEffect, useState, startTransition } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { t } from '../i18n.js';
+import ConfirmClearModal from '../components/ConfirmClearModal.jsx';
+import ImportTemplatesModal from '../components/ImportTemplatesModal.jsx';
+import DeleteTemplateModal from '../components/DeleteTemplateModal.jsx';
 
 const textify = (x) => {
   if (Array.isArray(x)) return x.flat().filter(Boolean).map(String).join(' ');
   if (x == null) return '';
   return typeof x === 'string' ? x : String(x);
 };
+
 import { loadConfig, loadValues } from '../utils.js';
-import { loadTemplates, deleteTemplate, exportTemplatesBlob, importTemplatesText, applyTemplate, renameTemplate } from '../utils.templates.js';
+import {
+  loadTemplates, deleteTemplate, exportTemplatesBlob, importTemplatesText, applyTemplate, renameTemplate
+} from '../utils.templates.js';
 import {
   loadWorkspaceProjects, saveWorkspaceProjects,
   newWorkspaceId, snapshotWorkspace, applyWorkspace,
@@ -41,35 +47,137 @@ export default function Sidebar(){
     } catch { return 0; }
   };
   const LS_MAX = 5 * 1024 * 1024; // ~5MB
+  const navigate = useNavigate();
   const [lsBytes, setLsBytes] = useState(0);
+
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [templates, setTemplates] = useState(() => loadTemplates());
+
+  // Import Templates modal state
+  const [isImportTplOpen, setIsImportTplOpen] = useState(false);
+  const [importTplParsed, setImportTplParsed] = useState(null);
+  const [importTplError, setImportTplError] = useState('');
+
+  // Delete Template modal state
+  const [isDeleteTplOpen, setIsDeleteTplOpen] = useState(false);
+  const [tplToDelete, setTplToDelete] = useState(null);
+
+  const [isTplOverwriteOpen, setIsTplOverwriteOpen] = useState(false);
+  const [tplPending, setTplPending] = useState(null);
+  const [isTplAppliedOpen, setIsTplAppliedOpen] = useState(false);
+  const [appliedTplName, setAppliedTplName] = useState('');
+  const [appliedTargetIfaceId, setAppliedTargetIfaceId] = useState(null);
+  const [isTplImportDoneOpen, setIsTplImportDoneOpen] = useState(false);
+  const [tplImportStats, setTplImportStats] = useState({added:0, overwritten:0});
+
   const [editingTplId, setEditingTplId] = useState(null);
   const [editingName, setEditingName] = useState('');
+
+  // keep templates in sync with storage events
   useEffect(() => {
     const onChange = () => setTemplates(loadTemplates());
     window.addEventListener('tcf-templates-changed', onChange);
     return () => window.removeEventListener('tcf-templates-changed', onChange);
   }, []);
 
+  // ===== actuallyApplyTemplate moved out of useEffect for stable scope =====
+  const actuallyApplyTemplate = async (tplId, tplName) => {
+    // Snapshot BEFORE
+    let beforeVals = {}; let beforeCfg = null;
+    try { beforeVals = loadValues() || {}; } catch(_) {}
+    try { beforeCfg = loadConfig() || null; } catch(_) {}
 
-useEffect(() => {
-  const schedule = (fn) => {
-    if (typeof queueMicrotask === 'function') queueMicrotask(fn);
-    else setTimeout(fn, 0);
-  };
-  const update = () => {
-    const bytes = calcLocalStorageBytes();
-    schedule(() => setLsBytes(bytes));
-  };
-  // inicjał też odkładamy – nie w tej samej fazie renderu
-  schedule(update);
+    // Try to determine target from template metadata (best-effort)
+    let targetIfaceId = null;
+    try {
+      const t = (templates || []).find(x => x && x.id === tplId);
+      if (t) {
+        targetIfaceId = t.ifaceId
+          || (t.ifaceIds && t.ifaceIds[0])
+          || (t.interfaces && t.interfaces[0] && (t.interfaces[0].id || t.interfaces[0]))
+          || (t.ifaces && t.ifaces[0] && (t.ifaces[0].id || t.ifaces[0]))
+          || null;
+      }
+    } catch(_) {}
 
-  const onEvent = () => schedule(update);
-  const evs = ['tcf-values-changed','tcf-config-changed','tcf-workspace-changed','tcf-project-changed','storage'];
-  evs.forEach(ev => window.addEventListener(ev, onEvent));
-  return () => { evs.forEach(ev => window.removeEventListener(ev, onEvent)); };
-}, []);
+    // Apply
+    try {
+      await applyTemplate(tplId);
+    } catch (e) {
+      console.error('[Sidebar] applyTemplate failed', e);
+    }
+
+    // Snapshot AFTER
+    let afterCfg = null; let afterVals = {};
+    try { afterCfg = loadConfig() || null; } catch(_) {}
+    try { afterVals = loadValues() || {}; } catch(_) {}
+
+    // If we still don't know the target, infer by diff in values
+    try {
+      if (!targetIfaceId && afterCfg && afterCfg.interfaces) {
+        const ids = afterCfg.interfaces.map(i => (i && i.id) ? i.id : i).filter(Boolean);
+        const changed = [];
+        const countNonEmpty = (obj) => {
+          if (!obj || typeof obj !== 'object') return 0;
+          let c = 0;
+          for (const k of Object.keys(obj)) {
+            const v = obj[k];
+            if (v !== null && v !== undefined && !(typeof v === 'string' && v.trim() === '')) c++;
+          }
+          return c;
+        };
+        for (const id of ids) {
+          const b = beforeVals[id] || {};
+          const a = afterVals[id] || {};
+          if (JSON.stringify(a) !== JSON.stringify(b)) {
+            changed.push(id);
+          } else if (countNonEmpty(a) > countNonEmpty(b)) {
+            changed.push(id);
+          }
+        }
+        if (changed.length) targetIfaceId = changed[0];
+      }
+    } catch (e) {
+      console.warn('[Sidebar] diff detect failed', e);
+    }
+
+    // Fallback to first interface
+    if (!targetIfaceId) {
+      try {
+        const firstId = (afterCfg && afterCfg.interfaces && afterCfg.interfaces[0] && afterCfg.interfaces[0].id)
+          ? afterCfg.interfaces[0].id : null;
+        targetIfaceId = firstId;
+      } catch(_) {}
+    }
+
+    // Open success modal and set navigation target
+    try {
+      setAppliedTplName(tplName || '');
+      setAppliedTargetIfaceId(targetIfaceId || null);
+      setIsTplAppliedOpen(true);
+    } catch (e) {
+      console.warn('[Sidebar] navigation target set failed', e);
+      setIsTplAppliedOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    const schedule = (fn) => {
+      if (typeof queueMicrotask === 'function') queueMicrotask(fn);
+      else setTimeout(fn, 0);
+    };
+    const update = () => {
+      const bytes = calcLocalStorageBytes();
+      schedule(() => setLsBytes(bytes));
+    };
+    // inicjał też odkładamy – nie w tej samej fazie renderu
+    schedule(update);
+
+    const onEvent = () => schedule(update);
+    const evs = ['tcf-values-changed','tcf-config-changed','tcf-workspace-changed','tcf-project-changed','storage'];
+    evs.forEach(ev => window.addEventListener(ev, onEvent));
+    return () => { evs.forEach(ev => window.removeEventListener(ev, onEvent)); };
+  }, []);
 
   const fmtMB = (b) => {
     try {
@@ -95,26 +203,25 @@ useEffect(() => {
 
   // Recompute highlight when values/workspace change
   const [valTick, setValTick] = React.useState(0);
-React.useEffect(() => {
-  const schedule = (fn) => {
-    if (typeof queueMicrotask === 'function') queueMicrotask(fn);
-    else setTimeout(fn, 0);
-  };
-  const h = () => schedule(() => setValTick(x => x + 1));
-  window.addEventListener('tcf-values-changed', h);
-  window.addEventListener('tcf-config-changed', h);
-  window.addEventListener('tcf-workspace-changed', h);
-  window.addEventListener('tcf-project-changed', h);
-  window.addEventListener('storage', h);
-  return () => {
-    window.removeEventListener('tcf-values-changed', h);
-    window.removeEventListener('tcf-config-changed', h);
-    window.removeEventListener('tcf-workspace-changed', h);
-    window.removeEventListener('tcf-project-changed', h);
-    window.removeEventListener('storage', h);
-  };
-}, []);
-
+  React.useEffect(() => {
+    const schedule = (fn) => {
+      if (typeof queueMicrotask === 'function') queueMicrotask(fn);
+      else setTimeout(fn, 0);
+    };
+    const h = () => schedule(() => setValTick(x => x + 1));
+    window.addEventListener('tcf-values-changed', h);
+    window.addEventListener('tcf-config-changed', h);
+    window.addEventListener('tcf-workspace-changed', h);
+    window.addEventListener('tcf-project-changed', h);
+    window.addEventListener('storage', h);
+    return () => {
+      window.removeEventListener('tcf-values-changed', h);
+      window.removeEventListener('tcf-config-changed', h);
+      window.removeEventListener('tcf-workspace-changed', h);
+      window.removeEventListener('tcf-project-changed', h);
+      window.removeEventListener('storage', h);
+    };
+  }, []);
 
   // Which interfaces are "in use"
   const usedIfaceIds = React.useMemo(() => {
@@ -240,168 +347,301 @@ React.useEffect(() => {
   const ifaceHighlightStyle = { boxShadow: 'inset 0 0 0 2px #2ecc71', borderRadius: 8 };
 
   return (
-    <aside className="sidebar">
-      <div className="s-head" style={{padding:'6px 8px'}}>
-        <Link className="s-item s-home" to="/">
-          <span className="s-item-icon">🏠</span>
-          <span className="s-item-title">{t('home')}</span>
-          <span className="chev">›</span>
-        </Link>
-      </div>
+    <>
+      <aside className="sidebar">
+        <div className="s-head" style={{padding:'6px 8px'}}>
+          <Link className="s-item s-home" to="/">
+            <span className="s-item-icon">🏠</span>
+            <span className="s-item-title">{t('home')}</span>
+            <span className="chev">›</span>
+          </Link>
+        </div>
 
-      <div className="s-cat-list">
-        {Array.from((() => {
-          const byCat = new Map();
-          (cfg.categories || []).forEach(c => byCat.set(c.id, { cat:c, items:[] }));
-          (cfg.interfaces || []).forEach(it => {
-            const key = it.categoryId || (cfg.categories && cfg.categories[0]?.id) || 'inbound';
-            if (!byCat.has(key)) byCat.set(key, { cat:{ id:key, name:key }, items:[] });
-            byCat.get(key).items.push(it);
-          });
-          return byCat;
-        })().values()).map(group => (
-          <div key={group.cat.id} className={`s-cat ${openCats[group.cat.id] ? 'open' : 'closed'}`}>
-            <div className="s-cat-head" onClick={()=>toggleCat(group.cat.id)}>
-              <span className="s-item-icon">📂</span>
-              <span className="s-cat-title">{group.cat.name}</span>
-              <span className="badge">{group.items.length}</span>
-              <span className="chev">{openCats[group.cat.id] ? '▾' : '▸'}</span>
+        <div className="s-cat-list">
+          {Array.from((() => {
+            const byCat = new Map();
+            (cfg.categories || []).forEach(c => byCat.set(c.id, { cat:c, items:[] }));
+            (cfg.interfaces || []).forEach(it => {
+              const key = it.categoryId || (cfg.categories && cfg.categories[0]?.id) || 'inbound';
+              if (!byCat.has(key)) byCat.set(key, { cat:{ id:key, name:key }, items:[] });
+              byCat.get(key).items.push(it);
+            });
+            return byCat;
+          })().values()).map(group => (
+            <div key={group.cat.id} className={`s-cat ${openCats[group.cat.id] ? 'open' : 'closed'}`}>
+              <div className="s-cat-head" onClick={()=>toggleCat(group.cat.id)}>
+                <span className="s-item-icon">📂</span>
+                <span className="s-cat-title">{group.cat.name}</span>
+                <span className="badge">{group.items.length}</span>
+                <span className="chev">{openCats[group.cat.id] ? '▾' : '▸'}</span>
+              </div>
+              <div className="s-list">
+                {group.items.map(it => {
+                  const isUsed = usedIfaceIds.has(it.id);
+                  return (
+                    <Link key={it.id}
+                          className={`s-item ${isUsed ? 'used' : ''}`}
+                          to={`/iface/${it.id}`}
+                          style={isUsed ? ifaceHighlightStyle : undefined}
+                    >
+                      <span className="s-item-title">{it.name}</span>
+                      <span className="chev">›</span>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
+          ))}
+        </div>
+
+        <div className="s-cat s-projects open">
+          <div className="s-cat-head" style={{ justifyContent: 'flex-start', gap: 8 }}>
+            <span className="s-item-icon"><Icon.FolderOpen /></span>
+            <span className="s-cat-title">{t('workspaceProjects') || t('projects') || 'Projekty'}</span>
+          </div>
+          <div className="s-list">
+            <button className="s-item" onClick={newWorkspace} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-start"}}>
+              <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon.Plus /> <span className="s-item-title">{t('newWorkspace') || 'Nowy projekt'}</span></span>
+              <span className="chev">›</span>
+            </button>
+            <button className="s-item" onClick={saveWorkspace} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-start"}}>
+              <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon.Save /> <span className="s-item-title">{t('saveWorkspace') || 'Zapisz projekt'}</span></span>
+              <span className="chev">›</span>
+            </button>
+            <button className="s-item" onClick={exportWorkspace} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-start"}}>
+              <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon.Export /> <span className="s-item-title">{t('exportWorkspace') || 'Eksport projektu'}</span></span>
+              <span className="chev">›</span>
+            </button>
+            <button className="s-item" onClick={()=>fileWsRef.current?.click()} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-start"}}>
+              <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon.Import /> <span className="s-item-title">{t('importWorkspace') || 'Import projektu'}</span></span>
+              <span className="chev">›</span>
+            </button>
+
             <div className="s-list">
-              {group.items.map(it => {
-                const isUsed = usedIfaceIds.has(it.id);
-                return (
-                  <Link key={it.id}
-                        className={`s-item ${isUsed ? 'used' : ''}`}
-                        to={`/iface/${it.id}`}
-                        style={isUsed ? ifaceHighlightStyle : undefined}
-                  >
-                    <span className="s-item-title">{it.name}</span>
-                    <span className="chev">›</span>
-                  </Link>
-                );
-              })}
+              {Object.entries(wsMap).map(([wid, w]) => (
+                <button
+                  key={wid}
+                  className={`s-item ${wid===currentWs?'active':''}`}
+                  onClick={()=>{
+                    if (applyWorkspace(w.data)){
+                      setCurrentWorkspaceId(wid); setCurrentWs(wid);
+                      try { window.dispatchEvent(new Event('tcf-workspace-changed')); } catch {}
+                      alert((t('workspaceApplied') || 'Workspace applied') + (w?.name ? `: ${w.name}` : ''));
+                    } else {
+                      alert(t('invalidJson') || 'Invalid JSON');
+                    }
+                  }}
+                >
+                  <span className="s-item-title">{w?.name || wid}</span>
+                  <span className="chev">›</span>
+                </button>
+              ))}
+            </div>
+
+            <button className="s-item danger" onClick={deleteCurrentWorkspace} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-start", color:"var(--danger,#c43)"}}>
+              <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon.Trash /> <span className="s-item-title">{t('deleteWorkspace') || 'Usuń projekt'}</span></span>
+              <span className="chev">›</span>
+            </button>
+
+            <div className="current-project" style={{marginTop:8}}>
+              <div className="muted" style={{opacity:0.8,fontSize:12}}>{t('currentWorkspace') || 'Aktualny projekt'}</div>
+              <div style={{fontWeight:700}}>{wsMap[currentWs]?.name || '-'}</div>
             </div>
           </div>
-        ))}
-      </div>
-
-      <div className="s-cat s-projects open">
-        <div className="s-cat-head" style={{ justifyContent: 'flex-start', gap: 8 }}>
-          <span className="s-item-icon"><Icon.FolderOpen /></span>
-          <span className="s-cat-title">{t('workspaceProjects') || t('projects') || 'Projekty'}</span>
+          <input ref={fileWsRef} type="file" accept="application/json" style={{display:'none'}} onChange={importWorkspace} />
         </div>
-        <div className="s-list">
-          <button className="s-item" onClick={newWorkspace} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-start"}}>
-            <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon.Plus /> <span className="s-item-title">{t('newWorkspace') || 'Nowy projekt'}</span></span>
-            <span className="chev">›</span>
-          </button>
-          <button className="s-item" onClick={saveWorkspace} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-start"}}>
-            <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon.Save /> <span className="s-item-title">{t('saveWorkspace') || 'Zapisz projekt'}</span></span>
-            <span className="chev">›</span>
-          </button>
-          <button className="s-item" onClick={exportWorkspace} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-start"}}>
-            <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon.Export /> <span className="s-item-title">{t('exportWorkspace') || 'Eksport projektu'}</span></span>
-            <span className="chev">›</span>
-          </button>
-          <button className="s-item" onClick={()=>fileWsRef.current?.click()} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-start"}}>
-            <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon.Import /> <span className="s-item-title">{t('importWorkspace') || 'Import projektu'}</span></span>
-            <span className="chev">›</span>
-          </button>
 
-          <div className="s-list">
-            {Object.entries(wsMap).map(([wid, w]) => (
-              <button
-                key={wid}
-                className={`s-item ${wid===currentWs?'active':''}`}
-                onClick={()=>{
-                  if (applyWorkspace(w.data)){
-                    setCurrentWorkspaceId(wid); setCurrentWs(wid);
-                    try { window.dispatchEvent(new Event('tcf-workspace-changed')); } catch {}
-                    alert((t('workspaceApplied') || 'Workspace applied') + (w?.name ? `: ${w.name}` : ''));
-                  } else {
-                    alert(t('invalidJson') || 'Invalid JSON');
-                  }
-                }}
-              >
-                <span className="s-item-title">{w?.name || wid}</span>
-                <span className="chev">›</span>
-              </button>
-            ))}
+        <div className={`s-cat s-templates ${templatesOpen ? 'open' : 'closed'}`}>
+          <div className="s-cat-head" onClick={()=>setTemplatesOpen(!templatesOpen)}>
+            <span className="s-item-icon"><Icon.Save /></span>
+            <span className="s-cat-title">{t('templatesMenu') || t('templates') || 'Schematy'}</span>
+            <span className="chev">{templatesOpen ? '▾' : '▸'}</span>
           </div>
+          {templatesOpen && (
+            <div className="s-list">
+              <div className="s-actions">
+                {/* IMPORT — nasz modal */}
+                <button
+                  className="s-item"
+                  onClick={()=> setIsImportTplOpen(true)}
+                  style={{display:'flex',alignItems:'center',gap:8,justifyContent:'flex-start'}}
+                >
+                  <span className="s-item-icon"><Icon.Import /></span>
+                  <span className="s-item-title">{t('importTemplates') || 'Importuj schematy'}</span>
+                  <span className="chev">›</span>
+                </button>
 
-          <button className="s-item danger" onClick={deleteCurrentWorkspace} style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-start", color:"var(--danger,#c43)"}}>
-            <span style={{display:"inline-flex",alignItems:"center",gap:8}}><Icon.Trash /> <span className="s-item-title">{t('deleteWorkspace') || 'Usuń projekt'}</span></span>
-            <span className="chev">›</span>
-          </button>
+                {/* EXPORT — bez zmian */}
+                <button
+                  className="s-item"
+                  onClick={()=>{
+                    try{
+                      const b=exportTemplatesBlob();
+                      const url=URL.createObjectURL(b);
+                      const a=document.createElement('a');
+                      a.href=url;
+                      const ts=(new Date()).toISOString().replace(/[:.]/g,'-');
+                      a.download=`templates_${ts}.json`;
+                      document.body.appendChild(a); a.click();
+                      setTimeout(()=>{URL.revokeObjectURL(url); a.remove();}, 1000);
+                    } catch(e){ console.error(e);}
+                  }}
+                  style={{display:'flex',alignItems:'center',gap:8,justifyContent:'flex-start'}}
+                >
+                  <span className="s-item-icon"><Icon.Export /></span>
+                  <span className="s-item-title">{t('exportTemplates') || 'Eksportuj schematy'}</span>
+                </button>
+              </div>
 
-          <div className="current-project" style={{marginTop:8}}>
-            <div className="muted" style={{opacity:0.8,fontSize:12}}>{t('currentWorkspace') || 'Aktualny projekt'}</div>
-            <div style={{fontWeight:700}}>{wsMap[currentWs]?.name || '-'}</div>
-          </div>
-        </div>
-        <input ref={fileWsRef} type="file" accept="application/json" style={{display:'none'}} onChange={importWorkspace} />
-      </div>
+              <div className="s-list-items">
+                {(templates && templates.length) ? templates.map((tpl) => (
+                  <div key={tpl.id} className="s-item tpl-row"
+                      style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                    <div className="tpl-title" style={{minWidth:0,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap', cursor:'pointer'}} title={tpl.name} onClick={async ()=>{ const vals = loadValues(); const hasAny = vals && Object.values(vals).some(v=>v && Object.keys(v).length>0); setTplPending({ id: tpl.id, name: tpl.name||'' }); if (hasAny) { setIsTplOverwriteOpen(true); } else { await actuallyApplyTemplate(tpl.id, tpl.name||''); } }}>
+                      {editingTplId===tpl.id ? (
+                        <input className="tpl-rename-input" autoFocus value={editingName} onChange={e=>setEditingName(e.target.value)}
+                              onKeyDown={(e)=>{ if (e.key==='Enter') { renameTemplate(editingTplId, editingName||''); setTemplates(loadTemplates()); setEditingTplId(null); setEditingName(''); } else if (e.key==='Escape') { setEditingTplId(null); setEditingName(''); } }}
+                              onBlur={()=>{ renameTemplate(editingTplId, editingName||''); setTemplates(loadTemplates()); setEditingTplId(null); setEditingName(''); }}
+                              style={{width:'100%'}} />
+                      ) : tpl.name}
+                    </div>
 
-      {Boolean(currentWs) && (
-        <div className="project-save" style={{textAlign:'center', padding:'12px 8px'}}>
-          <button className="s-item" onClick={saveProjectChanges} style={{display:'inline-flex',alignItems:'center',gap:8,justifyContent:'center', padding:'8px 12px'}}>
-            <span style={{display:'inline-flex',alignItems:'center',gap:8}}><Icon.Save /> <span className="s-item-title">{t('saveProjectChanges') || 'Zapisz zmiany w projekcie'}</span></span>
-          </button>
-        </div>
-      )}
+                    <button
+                      className="tpl-edit"
+                      onClick={(e)=>{ e.stopPropagation(); setEditingTplId(tpl.id); setEditingName(tpl.name||''); }}
+                      title={t('renameTemplate') || 'Zmień nazwę'}
+                    >✎</button>
 
-      
-      <div className={`s-cat s-templates ${templatesOpen ? 'open' : 'closed'}`}>
-        <div className="s-cat-head" onClick={()=>setTemplatesOpen(!templatesOpen)}>
-          <span className="s-item-icon"><Icon.Save /></span>
-          <span className="s-cat-title">{t('templatesMenu') || t('templates') || 'Schematy'}</span>
-          <span className="chev">{templatesOpen ? '▾' : '▸'}</span>
-        </div>
-        {templatesOpen && (
-          <div className="s-list">
-            <div className="s-actions">
-              <label className="s-item" style={{display:'flex',alignItems:'center',gap:8,justifyContent:'flex-start', cursor:'pointer'}}>
-                <input type="file" accept="application/json" style={{display:'none'}} onChange={async (e)=>{ const f=e.target.files?.[0]; e.target.value=''; if(!f) return; try{ const tx=await f.text(); if(importTemplatesText(tx)){ alert(t('importOk')||'Import completed'); setTemplates(loadTemplates()); } else { alert(t('importInvalid')||'Invalid file'); } } catch { alert(t('importInvalid')||'Invalid file'); } }} />
-                <span className="s-item-icon"><Icon.Import /></span>
-                <span className="s-item-title">{t('importTemplates') || 'Importuj schematy'}</span>
-              </label>
-              <button className="s-item" onClick={()=>{ try{ const b=exportTemplatesBlob(); const url=URL.createObjectURL(b); const a=document.createElement('a'); a.href=url; const ts=(new Date()).toISOString().replace(/[:.]/g,'-'); a.download=`templates_${ts}.json`; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(url); a.remove();}, 1000); } catch(e){ console.error(e);} }} style={{display:'flex',alignItems:'center',gap:8,justifyContent:'flex-start'}}>
-                <span className="s-item-icon"><Icon.Export /></span>
-                <span className="s-item-title">{t('exportTemplates') || 'Eksportuj schematy'}</span>
-              </button>
-            </div>
-            <div className="s-list-items">
-              {(templates && templates.length) ? templates.map((tpl) => (
-                <div key={tpl.id} className="s-item tpl-row"
-                     style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
-                  <div className="tpl-title" style={{minWidth:0,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap', cursor:'pointer'}} title={tpl.name} onClick={()=>applyTemplate(tpl.id)}>
-                    {editingTplId===tpl.id ? (
-                      <input className="tpl-rename-input" autoFocus value={editingName} onChange={e=>setEditingName(e.target.value)}
-                             onKeyDown={(e)=>{ if (e.key==='Enter') { renameTemplate(editingTplId, editingName||''); setTemplates(loadTemplates()); setEditingTplId(null); setEditingName(''); } else if (e.key==='Escape') { setEditingTplId(null); setEditingName(''); } }}
-                             onBlur={()=>{ renameTemplate(editingTplId, editingName||''); setTemplates(loadTemplates()); setEditingTplId(null); setEditingName(''); }}
-                             style={{width:'100%'}} />
-                    ) : tpl.name}
+                    {/* DELETE — nasz modal zamiast confirm */}
+                    <button
+                      className="tpl-del"
+                      onClick={(e)=>{ e.stopPropagation(); setTplToDelete(tpl); setIsDeleteTplOpen(true); }}
+                      title={t('delete') || 'Usuń'}
+                      style={{color:'inherit'}}
+                    >
+                      ×
+                    </button>
                   </div>
-                  <button className="tpl-edit" onClick={(e)=>{ e.stopPropagation(); setEditingTplId(tpl.id); setEditingName(tpl.name||''); }} title={t('renameTemplate') || 'Zmień nazwę'}>✎</button>
-                  <button className="tpl-del"
-                          onClick={(e)=>{ e.stopPropagation(); if (confirm((t('confirmDeleteTemplate')||'Delete template "{name}"?').replace('{name}', tpl.name))) { deleteTemplate(tpl.id); setTemplates(loadTemplates()); } }}
-                          title="Delete" style={{color:'inherit'}}>
-                    ×
-                  </button>
-                </div>
-              )) : (
-                <div className="s-item is-empty">{t('templatesEmpty') || 'Brak schematów'}</div>
-              )}
+                )) : (
+                  <div className="s-item is-empty">{t('templatesEmpty') || 'Brak schematów'}</div>
+                )}
+              </div>
+
             </div>
+          )}
+        </div>
 
-          </div>
-        )}
-      </div>
+        <div className="ls-usage">
+          {fmtMB(lsBytes)}MB / {Math.round(LS_MAX/(1024*1024))}MB
+        </div>
 
-      <div className="ls-usage">
-        {fmtMB(lsBytes)}MB / {Math.round(LS_MAX/(1024*1024))}MB
-      </div>
-    </aside>
+        {/* Zastosuj schemat — ostrzeżenie o nadpisaniu */}
+        <ConfirmClearModal
+          open={isTplOverwriteOpen}
+          onClose={()=>{ setIsTplOverwriteOpen(false); setTplPending(null); }}
+          onConfirm={async ()=>{ const p = tplPending || {}; setIsTplOverwriteOpen(false); await actuallyApplyTemplate(p.id, p.name); setTplPending(null); }}
+          title={t('applyTemplateTitle') || 'Zastosować schemat'}
+          message={(t('applyTemplateConfirm')||'Zastosować schemat „{name}”? To może nadpisać istniejące dane.').replace('{name}', tplPending?.name||'')}
+          confirmText={t('apply') || t('ok') || 'OK'}
+        />
+
+        {/* Sukces zastosowania — z nawigacją do interfejsu */}
+        <ConfirmClearModal
+          open={isTplAppliedOpen}
+          onClose={()=>{ setIsTplAppliedOpen(false); if (appliedTargetIfaceId) navigate(`/iface/${appliedTargetIfaceId}`); }}
+          onConfirm={()=>{ setIsTplAppliedOpen(false); if (appliedTargetIfaceId) navigate(`/iface/${appliedTargetIfaceId}`); }}
+          title={t('templateAppliedTitle') || 'Zastosowano schemat'}
+          message={(t('templateAppliedMsg')||'Zastosowano schemat „{name}”.').replace('{name}', appliedTplName||'')}
+          confirmText={t('ok') || 'OK'}
+          hideCancel={true}
+        />
+      </aside>
+
+      {/* ===== Modale: Import + Delete (poza <aside>) ===== */}
+      <ImportTemplatesModal
+        open={isImportTplOpen}
+        existing={templates}
+        onClose={()=>{ setIsImportTplOpen(false); setImportTplParsed(null); setImportTplError(''); }}
+        onParsed={(parsed)=>{ setImportTplParsed(parsed); setImportTplError(''); }}
+        onError={(msg)=>{ setImportTplError(msg||''); }}
+        onImport={async (data, opts={})=>{
+          try {
+            const replace = !!opts.replace;
+            // Extract incoming list for stats + replace
+            const extract = (payload) => {
+              if (!payload) return [];
+              if (Array.isArray(payload)) return payload;
+              if (Array.isArray(payload.templates)) return payload.templates;
+              if (Array.isArray(payload.items)) return payload.items;
+              const ks = ['list','records','schemas','schemes','data','payload','templatesList'];
+              for (const k of ks) {
+                const v = payload[k];
+                if (Array.isArray(v)) return v;
+                if (v && typeof v==='object' && Array.isArray(v.templates)) return v.templates;
+                if (v && typeof v==='object' && Array.isArray(v.items)) return v.items;
+              }
+              for (const v of Object.values(payload)) {
+                if (Array.isArray(v) && v.some(x=>x && typeof x==='object')) return v;
+                if (v && typeof v==='object') {
+                  for (const vv of Object.values(v)) {
+                    if (Array.isArray(vv) && vv.some(x=>x && typeof x==='object')) return vv;
+                  }
+                }
+              }
+              return [];
+            };
+            const arr = extract(data);
+            const existingList = Array.isArray(templates) ? templates : [];
+            const exById = new Map(existingList.map(x => [String(x.id||''), x]));
+            const exByName = new Map(existingList.map(x => [String((x.name||x.title||'').trim().toLowerCase()), x]));
+
+            // pre-count
+            let added = 0, overwritten = 0;
+            for (const x of arr) {
+              const id = x && x.id ? String(x.id) : '';
+              const nm = (x && (x.name||x.title)) ? String(x.name||x.title).trim().toLowerCase() : '';
+              const dup = (id && exById.has(id)) || (nm && exByName.has(nm));
+              if (dup) overwritten++; else added++;
+            }
+
+            if (replace) {
+              // remove duplicates first (by id OR by name), then import
+              const ids = new Set(arr.map(x => x && x.id ? String(x.id) : '').filter(Boolean));
+              const names = new Set(arr.map(x => (x && (x.name||x.title)) ? String(x.name||x.title).trim().toLowerCase() : '').filter(Boolean));
+              try {
+                for (const t of existingList) {
+                  const id = t && t.id ? String(t.id) : '';
+                  const nm = (t && (t.name||t.title)) ? String(t.name||t.title).trim().toLowerCase() : '';
+                  if ((id && ids.has(id)) || (nm && names.has(nm))) {
+                    try { deleteTemplate(t.id); } catch(e) { console.warn('[Sidebar] deleteTemplate before replace failed', e); }
+                  }
+                }
+              } catch(e) { console.warn('[Sidebar] replace pre-clean failed', e); }
+            }
+
+            const ok = importTemplatesText(JSON.stringify(data));
+            if (!ok) throw new Error('invalid');
+            setTemplates(loadTemplates());
+            setIsImportTplOpen(false);
+            setImportTplParsed(null);
+            setImportTplError('');
+
+            // show summary
+            setTplImportStats({ added, overwritten: replace ? overwritten : 0 });
+            setIsTplImportDoneOpen(true);
+          } catch (e) {
+            console.error('[Sidebar] importTemplates failed', e);
+            setImportTplError(t('importInvalid') || 'Invalid file');
+          }
+        }}
+      />
+
+      <DeleteTemplateModal
+        open={isDeleteTplOpen}
+        template={tplToDelete}
+        onClose={()=>{ setIsDeleteTplOpen(false); setTplToDelete(null); }}
+        onConfirm={()=>{ try { deleteTemplate(tplToDelete?.id); } catch(e){ console.error('[Sidebar] delete tpl failed', e); } setTemplates(loadTemplates()); setIsDeleteTplOpen(false); setTplToDelete(null); }}
+      />
+    </>
   );
 }

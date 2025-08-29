@@ -6,6 +6,8 @@ import { saveTemplate as tplSave } from '../utils.templates.js';
 import ScrollTabs from '../components/ScrollTabs.jsx';
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
 import ConfirmClearModal from '../components/ConfirmClearModal.jsx';
+import SaveTemplateModal from '../components/SaveTemplateModal.jsx';
+import DeleteTemplateModal from '../components/DeleteTemplateModal.jsx';
 import { segmentText } from '../segmentation.js';
 import { createWorkbookNewFile, downloadWorkbook } from '../utils/excelMapping';
 
@@ -22,6 +24,8 @@ export default function Home() {
   // Generated tabs change counter (textarea auto-refresh)
   const [genTabsVersion, setGenTabsVersion] = useState(0);
   const [isClearOpen, setIsClearOpen] = useState(false);
+  const [isClearSectionOpen, setIsClearSectionOpen] = useState(false);
+  const [clearSectionIdx, setClearSectionIdx] = useState(-1);
   const bumpGenTabs = React.useCallback(() => setGenTabsVersion(v => v + 1), []);
   useEffect(() => { try { localStorage.setItem('tcf_csv_mode', csvMode ? '1' : '0'); } catch (e) {} }, [csvMode]);
   useEffect(() => { try { localStorage.setItem('tcf_csv_sep', csvSep || ';'); } catch (e) {} }, [csvSep]);
@@ -113,6 +117,9 @@ export default function Home() {
   const [dockOpen, setDockOpen] = useState(true);
   
   const [templFlash, setTemplFlash] = useState(false);
+  const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
+  const [isDeleteTplOpen, setIsDeleteTplOpen] = useState(false);
+  const [tplToDelete, setTplToDelete] = useState(null);
 const [iface, setIface] = useState(null);
   const [valsMap, setValsMap] = useState(loadValues());
   const [values, setValues] = useState([]);
@@ -187,6 +194,16 @@ const usedIds = useMemo(() => {
       : (itf.sections || []).map(() => false);
     return included[sIx] ? 1 : 0;
   };
+
+  const sectionFieldCount = React.useMemo(() => {
+    try {
+      if (!iface || clearSectionIdx < 0) return 0;
+      const fs = Array.isArray(iface.fieldSections) ? iface.fieldSections : [];
+      const idx = Number(clearSectionIdx);
+      return fs.filter(sec => Number(sec) === idx).length;
+    } catch { return 0; }
+  }, [iface, clearSectionIdx]);
+
   const hasDataForSection = (itf, sIx) => {
     try { return usedCountForSection(itf, sIx) > 0; } catch { return false; }
   };
@@ -791,9 +808,9 @@ return out.join('\n');
     }
     return { ok:true };
   };
-  const saveAsTemplate = async () => {
-    const name = window.prompt(t('templateNamePrompt') || 'Template name:');
-    if (!name) return;
+  const saveAsTemplate = async () => { setIsSaveTemplateOpen(true); };
+  const doSaveTemplate = async (providedName) => {
+    const name = providedName;
     const isMulti = !!combineAll;
     const idList = isMulti ? (combineOrder || []) : [iface?.id].filter(Boolean);
     const byId = {};
@@ -811,6 +828,7 @@ return out.join('\n');
     setTemplFlash(false); try { void document?.querySelector('.result-area')?.offsetWidth; } catch (e) {}
     setTemplFlash(true); setTimeout(()=>setTemplFlash(false), 900);
   };
+
 
 
   const copyResult = async () => {
@@ -843,6 +861,7 @@ const clearForm = (force = false) => {
     ? window.confirm(t('confirmClearAll') || 'Na pewno wyczyścić pola, podsekcje i kolory?')
     : true);
   if (!ok) return;
+  const targetSec = (typeof overrideSec === 'number' ? overrideSec : activeSec);
 
   // 1) Clear all field values for this interface
   const empties = Array.from({ length: (iface.labels?.length || 0) }, () => '');
@@ -1039,17 +1058,70 @@ const clearForm = (force = false) => {
 
 
 
-const clearSection = () => {
+const clearSection = (force = false, overrideSec = null) => {
     if (!iface) return;
-    const arr = (valsMap[iface.id] ?? Array.from({ length: iface.labels.length }, () => '')).slice();
-    const idxs = iface.fieldSections.map((s, i) => s === activeSec ? i : -1).filter(i => i !== -1);
+    const ok = force ? true : ((typeof window !== 'undefined' && window.confirm) ? window.confirm(t('confirmClearSection') || 'Na pewno wyczyścić sekcję i pola?') : true);
+  if (!ok) return;
+  const targetSec = (typeof overrideSec === 'number' ? overrideSec : activeSec);
+  const arr = (valsMap[iface.id] ?? Array.from({ length: iface.labels.length }, () => '')).slice();
+    const idxs = iface.fieldSections.map((s, i) => s === targetSec ? i : -1).filter(i => i !== -1);
     idxs.forEach(i => { arr[i] = ''; });
     setValues(arr);
     const map = { ...valsMap, [iface.id]: arr }; setValsMap(map); saveValues(map);
+
+    // Also remove generated subsections (tabs) for this section
+    try {
+      const k = 'tcf_genTabs_' + String(iface.id);
+      const raw = localStorage.getItem(k);
+      const arrTabs = JSON.parse(raw || '[]') || [];
+      const rest = Array.isArray(arrTabs) ? arrTabs.filter(t => Number(t?.secIdx) !== Number(targetSec)) : [];
+      localStorage.setItem(k, JSON.stringify(rest));
+      try { localStorage.removeItem('tcf_genTabs_active_' + String(iface.id)); } catch (e) {}
+      try { bumpGenTabs(); } catch (e) {}
+    } catch (e) { console.warn('clearSection: tabs wipe failed', e); }
+
+    // Recompute section usage counters for badges
+    try {
+      const tabsById = new Map();
+      for (const it of (cfg?.interfaces || [])) {
+        try {
+          const raw = localStorage.getItem('tcf_genTabs_' + String(it.id));
+          const arr = JSON.parse(raw || '[]') || [];
+          tabsById.set(it.id, arr);
+        } catch (e) {}
+      }
+      const nextVals = { ...valsMap, [iface.id]: arr };
+      applySectionUsage(nextVals, tabsById);
+    } catch (e) {}
+
+    // Reset color & inclusion flag for this section
+    try{
+      const it = iface;
+      const total = it.sections?.length || 0;
+      const colors = (Array.isArray(it.sectionColors) && it.sectionColors.length === total) ? it.sectionColors.slice() : Array.from({length: total}, ()=>'');
+      const included = (Array.isArray(it.includedSections) && it.includedSections.length === total) ? it.includedSections.slice() : Array.from({length: total}, ()=>false);
+      colors[targetSec] = '';
+      included[targetSec] = false;
+      const fixed = { ...it, sectionColors: colors, includedSections: included };
+      const nextCfg = { ...cfg, interfaces: cfg.interfaces.map(x => x.id===it.id ? fixed : x) };
+      saveConfig(nextCfg); setCfg(nextCfg);
+    } catch(e) {}
+
   };
 
 
-  // --- Auto-sync after config/values changes (e.g., New Project) ---
+  
+  // Global hook so any "x" button can trigger our modal instead of window.confirm
+  useEffect(() => {
+    const opener = (name, onConfirm) => {
+      try { setTplToDelete({ name, onConfirm }); setIsDeleteTplOpen(true); } catch (e) {}
+    };
+    try { window.tcfAskDeleteTemplate = opener; } catch (_) {}
+    return () => {
+      try { if (window.tcfAskDeleteTemplate === opener) delete window.tcfAskDeleteTemplate; } catch (_) {}
+    };
+  }, []);
+// --- Auto-sync after config/values changes (e.g., New Project) ---
   const syncingRef = useRef(false);
 
   useEffect(() => {
@@ -1332,7 +1404,7 @@ if (!iface) return null;
               </div>
               <div className="actions-split">
                 <div className="actions">
-<GeneratedTabs
+<GeneratedTabs key={(iface?.id||'iface') + ':' + String(genTabsVersion)}
   iface={iface}
   activeSec={activeSec}
   values={values}
@@ -1356,7 +1428,7 @@ if (!iface) return null;
                 <div className="actions">
                   <button onClick={fillDefaultValues}>{t('fillDefaults') || 'Fill in default values'}</button>
 
-                  <button onClick={clearSection}>{t('clearSection')}</button>
+                  <button onClick={()=>{ setClearSectionIdx(activeSec); setIsClearSectionOpen(true); }}>{t('clearSection')}</button>
 </div>
               </div>
             </>
@@ -1522,11 +1594,7 @@ if (!iface) return null;
                           <button onClick={saveAsTemplate}>{t('saveAsTemplate') || 'Zapisz jako schemat'}</button>
             
 <button
-  onClick={() => {
-    if (combineAll) {
-      try { alert(t('onlySingleMode') || 'Opcja dostępna tylko w trybie pojedynczego interfejsu.'); } catch (e) {}
-      return;
-    }
+  onClick={() => { if (combineAll) { return; }
     try {
       const wb = createWorkbookNewFile(iface, valsMap, finalText);
       downloadWorkbook(wb, 'mapping.xlsx');
@@ -1535,7 +1603,10 @@ if (!iface) return null;
       try { alert(t('excelExportError') || 'Export do Excel nie powiódł się.'); } catch (_e) {}
     }
   }}
-  title={t('exportMapping') || 'Eksportuj mapowanie'}
+  disabled={!!combineAll}
+  aria-disabled={combineAll ? 'true' : 'false'}
+  style={{ opacity: combineAll ? 0.6 : undefined, cursor: combineAll ? 'not-allowed' : 'pointer' }}
+  title={combineAll ? (t('onlySingleMode') || 'Opcja dostępna tylko w trybie pojedynczego interfejsu.') : (t('exportMapping') || 'Eksportuj mapowanie')}
   className="export-mapping-btn"
 >
   <span className="export-mapping-btn__content">
@@ -1558,6 +1629,26 @@ if (!iface) return null;
           open={isClearOpen}
           onClose={()=> setIsClearOpen(false)}
           onConfirm={()=>{ clearForm(true); setIsClearOpen(false); }}
+        />
+              <ConfirmClearModal
+          open={isClearSectionOpen}
+          onClose={()=> setIsClearSectionOpen(false)}
+          onConfirm={()=>{ clearSection(true, clearSectionIdx); setIsClearSectionOpen(false); }}
+          title={t('clearSection')}
+          message={t('confirmClearSection')}
+          confirmText={t('clearSection')}
+        />
+              <SaveTemplateModal
+          open={isSaveTemplateOpen}
+          onClose={()=> setIsSaveTemplateOpen(false)}
+          onSubmit={(name)=>{ doSaveTemplate(name); setIsSaveTemplateOpen(false); }}
+        />
+
+        <DeleteTemplateModal
+          open={!!isDeleteTplOpen}
+          onClose={()=>{ setIsDeleteTplOpen(false); setTplToDelete(null); }}
+          name={tplToDelete?.name}
+          onConfirm={()=>{ try { tplToDelete?.onConfirm?.(); } finally { setIsDeleteTplOpen(false); setTplToDelete(null); } }}
         />
       </main>
   );
