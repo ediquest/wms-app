@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import './NotesDock.css';
 import {
@@ -9,6 +8,7 @@ import {
   getUI, setUI
 } from '../db/notesDB.js';
 import { t } from '../i18n.js';
+import ScrollTabs from './ScrollTabs.jsx';
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
@@ -21,19 +21,17 @@ export default function NotesDock() {
 
   const dockRef = useRef(null);
   const canvasRef = useRef(null);
-  const dragHandleRef = useRef({ dragging: false, startX: 0, startY: 0, startW: 0, startH: 0, startOff: 0 });
-
-  // panelRef wskazuje kontener panelu (to samo co dockRef)
   const panelRef = useRef(null);
-  const setDockAndPanelRef = useCallback((el) => {
-    dockRef.current = el;
-    panelRef.current = el;
-  }, []);
+  const [handleTop, setHandleTop] = useState(null);
+  const dockResizeRef = useRef({ mode:null, startX:0, startY:0, startW:0, startH:0 });
+  const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 0, startW: 0, startH: 0, startOff: 0 });
 
-  // [1] Zamykanie po kliknięciu poza panelem (jak modal)
+  const setDockAndPanelRef = useCallback((el) => { dockRef.current = el; panelRef.current = el; }, []);
+
+  // Close when clicking outside
   useEffect(() => {
     const onDown = (e) => {
-      if (!ui.open) return; // reaguj tylko gdy otwarty
+      if (!ui.open) return;
       const panel = panelRef.current;
       if (!panel) return;
       if (!panel.contains(e.target) && !e.target.closest?.('.notes-handle')) {
@@ -44,7 +42,7 @@ export default function NotesDock() {
     return () => document.removeEventListener('mousedown', onDown, true);
   }, [ui.open]);
 
-  // [2] API w window + skrót Alt+N
+  // Window API + Alt+N
   useEffect(() => {
     window.openNotesDock  = () => setUi(u => ({ ...u, open: true }));
     window.closeNotesDock = () => setUi(u => ({ ...u, open: false }));
@@ -64,19 +62,21 @@ export default function NotesDock() {
     };
   }, []);
 
+  // Init DB + UI + tabs
   useEffect(() => {
     (async () => {
       await initNotesDB();
       const uiState = await getUI();
-      setUi({ ...uiState, handleOffset: 0 });
+      setUi({ open: false, widthPct: uiState?.widthPct ?? 0.6, heightPct: uiState?.heightPct ?? 0.8, handleOffset: uiState?.handleOffset ?? 0 });
       const tb = await listTabs();
       setTabs(tb);
-      const aId = await getActiveTabId();
-      setActiveId(aId || (tb[0]?.id ?? null));
+      const aId = (await getActiveTabId()) || (tb[0]?.id ?? null);
+      setActiveId(aId);
       setReady(true);
     })();
   }, []);
 
+  // Load elements for active tab
   useEffect(() => {
     if (!activeTabId) return;
     (async () => {
@@ -92,19 +92,41 @@ export default function NotesDock() {
     })();
   }, [activeTabId, ready]);
 
+  // Apply CSS vars + persist UI
+
+  // Recompute handle top to stick to dock center when open
   useEffect(() => {
-    if (!dockRef.current) return;
+    if (!ui.open) return;
+    const recalc = () => {
+      try {
+        const el = dockRef.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const top = r.top + (r.height / 2);
+        setHandleTop(top);
+      } catch {}
+    };
+    recalc();
+    window.addEventListener('resize', recalc);
+    window.addEventListener('scroll', recalc, { passive: true });
+    return () => {
+      window.removeEventListener('resize', recalc);
+      window.removeEventListener('scroll', recalc);
+    };
+  }, [ui.open, ui.handleOffset, ui.heightPct, ui.widthPct]);
+
+  useEffect(() => {
     const el = dockRef.current;
-    el.style.setProperty('--dock-width', `${Math.round(ui.widthPct * 100)}vw`);
-    el.style.setProperty('--dock-height', `${Math.round(ui.heightPct * 100)}vh`);
+    if (!el) return;
+    el.style.setProperty('--dock-width', `${Math.round((ui.widthPct ?? 0.6) * 100)}vw`);
+    el.style.setProperty('--dock-height', `${Math.round((ui.heightPct ?? 0.6) * 100)}vh`);
     el.style.setProperty('--handle-offset', `${ui.handleOffset || 0}px`);
-    setUI({ open: ui.open, widthPct: ui.widthPct, heightPct: ui.heightPct });
+    setUI({ open: ui.open, widthPct: ui.widthPct, heightPct: ui.heightPct, handleOffset: ui.handleOffset });
   }, [ui]);
 
-  const toggleOpen = useCallback(() => {
-    setUi(u => ({ ...u, open: !u.open }));
-  }, []);
+  const toggleOpen = useCallback(() => { setUi(u => ({ ...u, open: !u.open })); }, []);
 
+  // Drag the handle to resize notes panel / move handle vertically
   useEffect(() => {
     const handleMove = (e) => {
       if (!dragHandleRef.current.dragging) return;
@@ -112,22 +134,38 @@ export default function NotesDock() {
       const dy = dragHandleRef.current.startY - e.clientY;
       const vw = Math.max(window.innerWidth, 1);
       const vh = Math.max(window.innerHeight, 1);
-      let widthPct = clamp(dragHandleRef.current.startW + dx / vw, 0.3, 0.9);
-      let heightPct = clamp(dragHandleRef.current.startH + dy / vh, 0.3, 0.6);
-      let handleOffset = clamp(dragHandleRef.current.startOff + (e.clientY - dragHandleRef.current.startY), -120, 120);
-      setUi(u => ({ ...u, widthPct, heightPct, handleOffset }));
+      dragHandleRef.current.moved = dragHandleRef.current.moved || Math.abs(dx) + Math.abs(dy) > 3;
+      // available half-height of the dock
+      const dockH = (ui.heightPct ?? 0.6) * Math.max(window.innerHeight, 1);
+      const margin = dockH * 0.05; // 5% margin
+      const half = dockH / 2;
+      let handleOffset = clamp(
+        dragHandleRef.current.startOff + (e.clientY - dragHandleRef.current.startY),
+        -half + margin,
+        half - margin
+      );
+      if (ui.open) {
+        let widthPct  = clamp(dragHandleRef.current.startW + dx / vw, 0.3, 0.9);
+        let heightPct = clamp(dragHandleRef.current.startH + dy / vh, 0.3, 0.8);
+        setUi(u => ({ ...u, widthPct, heightPct, handleOffset }));
+      } else {
+        setUi(u => ({ ...u, handleOffset }));
+      }
     };
     const handleUp = () => {
+      try { document.querySelector('.notes-handle')?.classList.remove('dragging'); } catch {}
       dragHandleRef.current.dragging = false;
       document.removeEventListener('mousemove', handleMove);
       document.removeEventListener('mouseup', handleUp);
     };
     const start = (e) => {
+      try { document.querySelector('.notes-handle')?.classList.add('dragging'); } catch {}
       dragHandleRef.current.dragging = true;
+      dragHandleRef.current.moved = false;
       dragHandleRef.current.startX = e.clientX;
       dragHandleRef.current.startY = e.clientY;
-      dragHandleRef.current.startW = ui.widthPct;
-      dragHandleRef.current.startH = ui.heightPct;
+      dragHandleRef.current.startW = ui.widthPct ?? 0.6;
+      dragHandleRef.current.startH = ui.heightPct ?? 0.6;
       dragHandleRef.current.startOff = ui.handleOffset || 0;
       document.addEventListener('mousemove', handleMove);
       document.addEventListener('mouseup', handleUp);
@@ -138,14 +176,14 @@ export default function NotesDock() {
     return () => handleEl.removeEventListener('mousedown', start);
   }, [ui.widthPct, ui.heightPct, ui.handleOffset]);
 
-  // ===== Helpers for z-index stacking =====
+  // Z-index helper
   const bringToFront = useCallback(async (id) => {
     const nextZ = (elements.reduce((m,e)=>Math.max(m, e.zIndex||0), 0) || 0) + 1;
     setElements(prev => prev.map(x => x.id === id ? { ...x, zIndex: nextZ } : x));
     try { await moveResizeElement(id, { zIndex: nextZ }); } catch {}
   }, [elements]);
 
-  // Double click to add new note
+  // Canvas dblclick add
   const onCanvasDoubleClick = async (e) => {
     if (!canvasRef.current || !activeTabId) return;
     const rect = canvasRef.current.getBoundingClientRect();
@@ -192,6 +230,7 @@ export default function NotesDock() {
     }
   };
 
+  // Tabs ops
   const onAddTab = async () => {
     const id = await addTab(`${t('notes.newTab','Nowa zakładka')}`);
     const tb = await listTabs();
@@ -199,16 +238,13 @@ export default function NotesDock() {
     setActiveId(id);
     await setActiveTabId(id);
   };
-  const onPickTab = async (id) => {
-    setActiveId(id);
-    await setActiveTabId(id);
-  };
+  const onPickTab = async (id) => { setActiveId(id); await setActiveTabId(id); };
   const onRenameTab = async (id, name) => {
     await renameTab(id, name.trim() || t('notes.tab','Zakładka'));
-    const tb = await listTabs();
-    setTabs(tb);
+    setTabs(await listTabs());
   };
 
+  // Move note
   const startDrag = (id, startX, startY) => {
     const el = elements.find(e => e.id === id);
     if (!el) return;
@@ -230,15 +266,21 @@ export default function NotesDock() {
     document.addEventListener('mouseup', mu);
   };
 
-  const startResize = (id, startX, startY) => {
+  // Resize note (dir: 'e' | 's' | 'se')
+  const startResize = (id, startX, startY, dir='se') => {
     const el = elements.find(e => e.id === id);
     if (!el) return;
     bringToFront(id);
+    const cw = canvasRef.current?.clientWidth||0;
+    const ch = canvasRef.current?.clientHeight||0;
+    const minW = 160, minH = 110;
     const mm = (e) => {
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
-      const nw = clamp(el.width + dx, 140, Math.min(1200, (canvasRef.current?.clientWidth||0) - el.x - 4));
-      const nh = clamp(el.height + dy, 80, Math.min(1200, (canvasRef.current?.clientHeight||0) - el.y - 4));
+      let nw = el.width;
+      let nh = el.height;
+      if (dir==='e' || dir==='se') nw = clamp(el.width + dx, minW, Math.min(1400, cw - el.x - 4));
+      if (dir==='s' || dir==='se') nh = clamp(el.height + dy, minH, Math.min(1400, ch - el.y - 4));
       setElements(prev => prev.map(x => x.id === id ? { ...x, width: nw, height: nh } : x));
     };
     const mu = async () => {
@@ -261,17 +303,95 @@ export default function NotesDock() {
     setElements(prev => prev.filter(x => x.id !== id));
   };
 
-  if (!ready) return null;
+  // --- Dock edge resizing (top 'n' and left 'w') ---
+  useEffect(() => {
+    if (!ui.open) return; // only when open
+    const root = dockRef.current;
+    if (!root) return;
+    const north = root.querySelector('.dock-resize-n');
+    const west  = root.querySelector('.dock-resize-w');
+    const vw = Math.max(window.innerWidth, 1);
+    const vh = Math.max(window.innerHeight, 1);
 
+    const move = (e) => {
+      if (!dockResizeRef.current.mode) return;
+      e.preventDefault();
+      if (dockResizeRef.current.mode === 'n') {
+        const dy = (dockResizeRef.current.startY - e.clientY) / vh;
+        const heightPct = clamp(dockResizeRef.current.startH + dy, 0.4, 0.95);
+        setUi(u => ({ ...u, heightPct }));
+      } else if (dockResizeRef.current.mode === 'w') {
+        const dx = (dockResizeRef.current.startX - e.clientX) / vw;
+        const widthPct = clamp(dockResizeRef.current.startW + dx, 0.35, 0.95);
+        setUi(u => ({ ...u, widthPct }));
+      }
+    };
+    const up = () => {
+      dockResizeRef.current.mode = null;
+      document.body.classList.remove('notes-resizing');
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+    };
+    const downN = (e) => {
+      dockResizeRef.current.mode = 'n';
+      dockResizeRef.current.startX = e.clientX;
+      dockResizeRef.current.startY = e.clientY;
+      dockResizeRef.current.startW = ui.widthPct ?? 0.6;
+      dockResizeRef.current.startH = ui.heightPct ?? 0.6;
+      document.body.classList.add('notes-resizing');
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    };
+    const downW = (e) => {
+      dockResizeRef.current.mode = 'w';
+      dockResizeRef.current.startX = e.clientX;
+      dockResizeRef.current.startY = e.clientY;
+      dockResizeRef.current.startW = ui.widthPct ?? 0.6;
+      dockResizeRef.current.startH = ui.heightPct ?? 0.6;
+      document.body.classList.add('notes-resizing');
+      document.addEventListener('mousemove', move);
+      document.addEventListener('mouseup', up);
+    };
+
+    north?.addEventListener('mousedown', downN);
+    west?.addEventListener('mousedown', downW);
+    return () => {
+      north?.removeEventListener('mousedown', downN);
+      west?.removeEventListener('mousedown', downW);
+      document.removeEventListener('mousemove', move);
+      document.removeEventListener('mouseup', up);
+      document.body.classList.remove('notes-resizing');
+    };
+  }, [ui.open]);
+if (!ready) return null;
+
+  // Handle glued to dock when open; at right edge when closed
+  const widthPct = typeof ui.widthPct === 'number' ? ui.widthPct : 0.6;
+  const handleStyle = {
+    right: ui.open ? `calc(${Math.round(widthPct * 100)}vw + 12px)` : '12px',
+    top:  ui.open && handleTop != null
+          ? `${Math.round(handleTop)}px`
+          : `calc(50vh + ${(ui.handleOffset || 0)}px)`
+  };
+
+
+  
   return (
     <>
-      <div className={`notes-handle ${ui.open ? 'on' : 'off'}`} title={t('notes.open', 'Otwórz/Zamknij Notes')} onClick={toggleOpen}>
-        <div className="label">{t('notes.title','Notes')}</div>
+      <div
+        className={`notes-handle ${ui.open ? 'on' : 'off'}`}
+        title={t('notes.open','Otwórz/Zamknij Notes')}
+        onClick={toggleOpen}
+        style={handleStyle}
+      >
+        <span className="label">{t('notes.title','Notes')}</span>
       </div>
 
       <div ref={setDockAndPanelRef} className={`notes-dock ${ui.open ? 'open':''}`}>
+          <div className="dock-resize-n" />
+          <div className="dock-resize-w" />
         <div className="notes-topbar">
-          <div className="notes-tabs" role="tablist" aria-label={t('notes.tabs','Zakładki')}>
+          <ScrollTabs height={38}>
             {tabs.map(tab => (
               <TabPill
                 key={tab.id}
@@ -288,10 +408,10 @@ export default function NotesDock() {
               />
             ))}
             <button className="notes-addtab" onClick={onAddTab}>+ {t('notes.addTab','Dodaj zakładkę')}</button>
-          </div>
+          </ScrollTabs>
 
           <div className="notes-actions">
-            <button className="notes-iconbtn" onClick={()=>alert(t('notes.hintShort','Wskazówka: podwójnie kliknij siatkę, aby dodać notatkę. Wklej obrazek Ctrl+V.'))}>ℹ</button>
+            <button className="notes-iconbtn" onClick={()=>alert(t('notes.hintShort','Podwójnie kliknij siatkę, aby dodać notatkę. Wklej obrazek Ctrl+V.'))}>ℹ</button>
           </div>
         </div>
 
@@ -311,7 +431,7 @@ export default function NotesDock() {
               el={el}
               onBringToFront={()=>bringToFront(el.id)}
               onDragStart={(sx,sy)=>startDrag(el.id, sx, sy)}
-              onResizeStart={(sx,sy)=>startResize(el.id, sx, sy)}
+              onResizeStart={(sx,sy,dir)=>startResize(el.id, sx, sy, dir)}
               onChangeText={(val)=>onChangeText(el.id, val)}
               onDelete={()=>onDeleteElement(el.id)}
             />
@@ -325,7 +445,7 @@ export default function NotesDock() {
 function TabPill({ active, name, onClick, onRename, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(name);
-  React.useEffect(()=>setVal(name), [name]);
+  useEffect(()=>setVal(name), [name]);
 
   return (
     <div className={`notes-tab ${active ? 'active':''}`} onClick={!editing ? onClick : undefined}>
@@ -383,9 +503,14 @@ function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText
 
   const HEADER_H = 28;
 
+  // Bigger, always-inside hit areas (not clipped by overflow)
+  const edgeRightStyle = { position:'absolute', top:0, right:0, width:12, height:'100%', cursor:'ew-resize', zIndex:3, background:'transparent' };
+  const edgeBottomStyle= { position:'absolute', left:0, bottom:0, width:'100%', height:12, cursor:'ns-resize', zIndex:3, background:'transparent' };
+  const cornerStyle    = { position:'absolute', right:0, bottom:0, width:24, height:24, cursor:'nwse-resize', zIndex:4, background:'transparent' };
+
   return (
     <div className="note-item" style={boxStyle} data-note={el.id} onMouseDown={onContainerMouseDown}>
-      {/* Nagłówek/zakładka do przenoszenia */}
+      {/* Header / grab */}
       <div
         ref={headerRef}
         className="note-header"
@@ -406,7 +531,7 @@ function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText
         >✕</button>
       </div>
 
-      {/* Treść */}
+      {/* Content */}
       {el.type === 'text' ? (
         <textarea
           className="note-textarea"
@@ -422,8 +547,10 @@ function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText
         </div>
       )}
 
-      {/* Uchwyt rozmiaru */}
-      <div className="note-resize" onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart(e.clientX, e.clientY); }} />
+      {/* Resize hit areas (inside edges, high z-index) */}
+      <div style={edgeRightStyle} onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart(e.clientX, e.clientY, 'e'); }} />
+      <div style={edgeBottomStyle} onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart(e.clientX, e.clientY, 's'); }} />
+      <div style={cornerStyle} onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart(e.clientX, e.clientY, 'se'); }} />
     </div>
   );
 }

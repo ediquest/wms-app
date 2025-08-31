@@ -1,0 +1,27 @@
+/* --- Scoped safe overrides for notes --- */
+
+/* Scope ALL resizers to be active only inside the notes panel */
+.notes-dock .note-item{ position:absolute; overflow:hidden; }
+
+.notes-dock .note-resize-e{ position:absolute; top:0; right:-6px; width:12px; height:100%; cursor: ew-resize; background: transparent !important; z-index:3; }
+.notes-dock .note-resize-s{ position:absolute; left:0; bottom:-6px; width:100%; height:12px; cursor: ns-resize; background: transparent !important; z-index:3; }
+.notes-dock .note-resize-se{ position:absolute; right:-4px; bottom:-4px; width:24px; height:24px; cursor: nwse-resize; background: transparent !important; z-index:3; }
+.notes-dock .note-resize-se::after{
+  content:''; position:absolute; inset:0;
+  background:
+    linear-gradient(135deg, transparent 50%, var(--border) 50%),
+    linear-gradient(135deg, transparent calc(50% + 2px), color-mix(in srgb, var(--text) 30%, #0000) calc(50% + 2px));
+  background-repeat:no-repeat; background-size:100% 100%;
+  opacity:.8;
+}
+
+/* When notes is closed, hide all resizers just in case */
+.notes-dock:not(.open) .note-resize-e,
+.notes-dock:not(.open) .note-resize-s,
+.notes-dock:not(.open) .note-resize-se{ display:none !important; }
+
+/* Ensure the handle doesn't cover the page width */
+.notes-handle{ background-clip: padding-box; }
+
+/* Keep notes tabs in a row when wrapped by ScrollTabs */
+.tabsScroll .notes-tab{ flex:0 0 auto; }

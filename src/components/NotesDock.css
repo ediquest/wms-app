@@ -35,12 +35,12 @@
   box-shadow: 0 12px 40px rgba(0,0,0,.35);
   overflow: hidden;
   opacity: 0;
-  transform: translateX(8px);
+  transform: translateX(32px);
   pointer-events: none;
-  transition: opacity .18s ease, transform .18s ease, width .2s ease, height .2s ease;
+  transition: transform .5s cubic-bezier(.34,1.56,.64,1), opacity .3s ease, width .2s ease, height .2s ease;
   z-index: 59;
 }
-.notes-dock.open{ opacity: 1; transform: none; pointer-events: auto; }
+.notes-dock.open{ opacity:1; transform:none; pointer-events:auto; }
 
 .notes-topbar{
   display:flex; align-items:center; gap:10px;
@@ -146,7 +146,7 @@
 }
 
 .note-resize{
-  position:absolute; right:0; bottom:0; width:16px; height:16px;
+  position:absolute; right:0; bottom:0; width:24px; height:24px;
   cursor: nwse-resize;
 }
 .note-resize::after{
@@ -162,6 +162,130 @@
 @media (prefers-color-scheme: light){
   /* Optional tuning if app ever switches tokens for light theme */
   .notes-handle{ box-shadow: 0 8px 20px rgba(0,0,0,.15); }
-  .notes-dock{ box-shadow: 0 12px 30px rgba(0,0,0,.18); }
+  .notes-dock{
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  width: var(--dock-width, 60vw);
+  height: var(--dock-height, 60vh);
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.35);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(32px);
+  pointer-events: none;
+  transition: transform .5s cubic-bezier(.34,1.56,.64,1), opacity .3s ease, width .2s ease, height .2s ease;
+  z-index: 59;
+}
   .note-item{ box-shadow: 0 8px 22px rgba(0,0,0,.18); }
 }
+
+
+/* ensure notes tabs don't shrink inside ScrollTabs */
+.tabsScroll .notes-tab{ flex:0 0 auto; }
+
+.notes-handle.on{ right: calc(var(--dock-width, 60vw) + 12px); }
+.notes-handle.off{ right: 12px; }
+
+.note-resize-e{ position:absolute; top:0; right:-6px; width:12px; height:100%; cursor: ew-resize; }
+.note-resize-s{ position:absolute; left:0; bottom:-6px; width:100%; height:12px; cursor: ns-resize; }
+
+/* === Vertical Notes open pill === */
+.notes-open-pill-wrapper{
+  position: fixed;
+  top: 30%;
+  left: 0;
+  z-index: 2147483647;
+}
+
+.notes-open-pill{
+  background: #27b3a7;
+  color: #fff;
+  font-weight: 600;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  border-radius: 0 12px 12px 0;
+  padding: 10px 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .2s ease, transform .1s ease;
+  box-shadow: 0 6px 16px rgba(0,0,0,.18);
+  border: 1px solid rgba(0,0,0,.12);
+}
+
+.notes-open-pill:hover{
+  background: #1f9087;
+}
+
+.notes-open-text{
+  transform: rotate(180deg);
+  display: inline-block;
+}
+
+/* === RESTYLE .notes-handle as vertical teal tab that sticks to the dock (right side) === */
+.notes-handle{
+  background: #27b3a7 !important;
+  color: #fff !important;
+  border: 1px solid rgba(0,0,0,.12) !important;
+  border-left: none !important;
+  border-radius: 12px 0 0 12px !important; /* rounded on the left (towards the page) */
+  padding: 10px 6px !important;
+  width: auto !important; height: auto !important;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6px 16px rgba(0,0,0,.18) !important;
+  cursor: pointer;
+  user-select: none;
+}
+
+.notes-handle .label{
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+  font-weight: 600;
+  letter-spacing: .2px;
+}
+
+.notes-handle:hover{ background:#1f9087 !important; }
+/* --- HANDLE transform-based offset & strong right stickiness --- */
+.notes-handle{
+  transform: translateY(var(--handle-offset, 0px));
+}
+.notes-handle.on{ right: calc(var(--dock-width, 60vw) + 12px) !important; }
+.notes-handle.off{ right: 12px !important; }
+
+/* --- ULTIMATE OVERRIDE to ensure right alignment wins over any leftover rules --- */
+:where(html, body) .notes-handle{ left: auto !important; }
+/* --- SPRINGY dock animation --- */
+.notes-dock {
+  transition: transform .5s cubic-bezier(.34,1.56,.64,1), opacity .3s ease;
+  transform: translateX(32px);
+  opacity: 0;
+  pointer-events: none;
+}
+.notes-dock.open {
+  transform: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Smooth handle top animation */
+.notes-handle {
+  transition: top .2s ease, background .2s;
+}
+
+.notes-handle.dragging{ transition: none !important; }
+
+:where(html,body) .notes-handle{ left: auto !important; }
+
+/* --- Dock resizers (top & left) --- */
+.notes-dock .dock-resize-n{ position:absolute; left:0; right:0; top:0; height:14px; cursor: ns-resize; z-index:3; }
+.notes-dock .dock-resize-w{ position:absolute; top:0; bottom:0; left:0; width:14px; cursor: ew-resize; z-index:3; }
+body.notes-resizing, body.notes-resizing *{ cursor: grabbing !important; }
+.notes-dock.notes-resizing, .notes-dock.resizing{ transition: none !important; }
+
+.notes-dock{ will-change: width, height; }
+
+body.notes-resizing{ user-select: none !important; }

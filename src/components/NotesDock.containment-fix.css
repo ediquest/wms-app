@@ -1,0 +1,47 @@
+/* ---- Notes – containment hotfix (scoped) ---- */
+
+/* Ensure the canvas is the containing block */
+.notes-dock .notes-canvas{
+  position: absolute !important;
+  inset: 44px 0 0 0 !important;
+  overflow: auto !important;
+}
+
+/* Each note box is positioned + defines containing block for its children */
+.notes-dock .note-item{
+  position: absolute !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  contain: layout paint !important;
+}
+
+/* The textarea/image is absolutely positioned INSIDE the note only */
+.notes-dock .note-item .note-textarea,
+.notes-dock .note-item .note-image,
+.notes-dock .note-item > div[role="content"]{
+  position: absolute !important;
+  top: 28px !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  max-width: 100% !important;
+  max-height: calc(100% - 28px) !important;
+}
+
+/* Wider/easier resize handles but scoped */
+.notes-dock .note-resize-e{ position:absolute; top:0; right:-6px; width:12px; height:100%; cursor: ew-resize; z-index:3; }
+.notes-dock .note-resize-s{ position:absolute; left:0; bottom:-6px; width:100%; height:12px; cursor: ns-resize; z-index:3; }
+.notes-dock .note-resize-se{ position:absolute; right:-4px; bottom:-4px; width:24px; height:24px; cursor: nwse-resize; z-index:3; }
+.notes-dock .note-resize-se::after{
+  content:''; position:absolute; inset:0;
+  background:
+    linear-gradient(135deg, transparent 50%, var(--border) 50%),
+    linear-gradient(135deg, transparent calc(50% + 2px), color-mix(in srgb, var(--text) 30%, #0000) calc(50% + 2px));
+  background-repeat:no-repeat; background-size:100% 100%;
+  opacity:.8;
+}
+
+/* Hide resizers when panel closed */
+.notes-dock:not(.open) .note-resize-e,
+.notes-dock:not(.open) .note-resize-s,
+.notes-dock:not(.open) .note-resize-se{ display:none !important; }

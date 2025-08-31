@@ -27,7 +27,7 @@ export async function initNotesDB() {
 
 export async function getUI() {
   const v = await notesDB.meta.get('dockUI');
-  return v?.value ?? { open: false, widthPct: 0.6, heightPct: 0.6 };
+  return v?.value ?? { open: false, widthPct: 0.6, heightPct: 0.8, handleOffset: 0 };
 }
 export async function setUI(next) {
   await notesDB.meta.put({ id: 'dockUI', value: next });
