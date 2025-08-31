@@ -1,179 +1,167 @@
-:root {
-  --notes-bg: var(--panel-bg, #ffffff);
-  --notes-text: var(--text-color, #0f172a);
-  --notes-border: var(--border-color, #e5e7eb);
-  --notes-accent: var(--accent, #0ea5e9);
-  --notes-muted: rgba(15, 23, 42, 0.5);
-}
 
-.notes-dock {
+/* NotesDock theme-aware styles */
+/* Uses global design tokens from :root (styles.css): --bg, --card, --text, --muted, --accent, --border */
+
+.notes-handle{
   position: fixed;
-  right: 0;
-  bottom: 12px;
-  height: var(--dock-height, 60vh);
-  width: var(--dock-width, 60vw);
-  max-width: 90vw;
-  max-height: 70vh;
-  background: var(--notes-bg);
-  color: var(--notes-text);
-  border: 1px solid var(--notes-border);
+  right: calc(var(--dock-width, 60vw));
+  top: calc(50vh + var(--handle-offset, 0px));
+  transform: translateY(-50%);
+  z-index: 60;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-right: none;
-  border-radius: 12px 0 0 12px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-  transform: translateX(100%);
-  transition: transform 240ms ease, height 120ms ease, width 120ms ease;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  z-index: 2147482000; /* keep above everything */
-}
-
-.notes-dock.open {
-  transform: translateX(0%);
-}
-
-.notes-handle {
-  position: fixed;
-  right: 0;
-  bottom: calc(12px + var(--handle-offset, 0px));
-  height: 160px;
-  width: 40px;
-  background: var(--notes-accent);
-  color: white;
   border-radius: 10px 0 0 10px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: grab;
-  user-select: none;
-  z-index: 2147483000; /* above the dock */
-  transition: opacity 150ms ease;
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.35);
+  transition: background .15s ease, border-color .15s ease, box-shadow .2s ease, top .2s ease;
 }
+.notes-handle:hover{ background: color-mix(in srgb, var(--card) 88%, #fff 12%); }
+.notes-handle .label{ font-weight:600; font-size:12px; letter-spacing:.03em; opacity:.85 }
 
-.notes-handle:active { cursor: grabbing; }
-
-.notes-handle .label {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+.notes-dock{
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  width: var(--dock-width, 60vw);
+  height: var(--dock-height, 60vh);
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.35);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateX(8px);
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease, width .2s ease, height .2s ease;
+  z-index: 59;
 }
+.notes-dock.open{ opacity: 1; transform: none; pointer-events: auto; }
 
-.notes-topbar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.notes-topbar{
+  display:flex; align-items:center; gap:10px;
   padding: 8px 10px;
-  border-bottom: 1px solid var(--notes-border);
-  background: linear-gradient(to bottom, rgba(0,0,0,0.02), transparent);
+  background: color-mix(in srgb, var(--card) 85%, #0000);
+  border-bottom: 1px solid var(--border);
 }
-
-.notes-tabs {
-  display: flex;
-  gap: 6px;
-  overflow: auto hidden;
-  padding-bottom: 2px;
-}
-
-.notes-tab {
-  border: 1px solid var(--notes-border);
-  background: #fff;
-  color: var(--notes-text);
+.notes-tabs{ display:flex; align-items:center; gap:6px; overflow:auto; }
+.notes-tab{
+  display:flex; align-items:center; gap:6px;
   padding: 6px 10px;
-  border-radius: 10px;
-  font-size: 13px;
-  line-height: 1;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card) 92%, #fff 8%);
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 12px; font-weight:600;
+  cursor:pointer;
+  user-select:none;
+}
+.notes-tab.active{
+  background: color-mix(in srgb, var(--card) 80%, #fff 20%);
+  border-color: color-mix(in srgb, var(--border) 70%, #fff 30%);
+}
+.notes-rename-input{
+  background: var(--inputBg, var(--card));
+  color: var(--inputText, var(--text));
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font: inherit;
+}
+.notes-addtab{
+  background: var(--btnBg, var(--card));
+  color: var(--btnText, var(--text));
+  border: 1px solid var(--btnBorder, var(--border));
+  border-radius: 8px;
+  padding: 6px 10px;
   cursor: pointer;
-  white-space: nowrap;
 }
-.notes-tab.active {
-  border-color: var(--notes-accent);
-  background: rgba(14,165,233,0.08);
-}
-
-.notes-addtab {
-  border: 1px dashed var(--notes-border);
+.notes-addtab:hover{ filter: brightness(1.05); }
+.notes-actions{ margin-left:auto; display:flex; gap:8px; }
+.notes-iconbtn{
   background: transparent;
-  padding: 6px 10px;
-  border-radius: 10px;
-  font-size: 13px;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px 8px;
   cursor: pointer;
 }
+.notes-iconbtn:hover{ background: color-mix(in srgb, var(--card) 85%, #fff 15%); }
 
-.notes-canvas {
-  position: relative;
-  flex: 1;
+.notes-canvas{
+  position: absolute;
+  inset: 44px 0 0 0;
+  /* subtle grid using border color */
   background:
-    linear-gradient(transparent 23px, rgba(0,0,0,0.04) 24px),
-    linear-gradient(90deg, transparent 23px, rgba(0,0,0,0.04) 24px);
-  background-size: 24px 24px;
+    linear-gradient(transparent 23px, color-mix(in srgb, var(--border), #0000) 24px),
+    linear-gradient(90deg, transparent 23px, color-mix(in srgb, var(--border), #0000) 24px);
+  background-size: 24px 24px, 24px 24px;
+  background-color: color-mix(in srgb, var(--card) 94%, #000 6%);
   overflow: auto;
 }
-
-.notes-tip {
-  position: absolute; left: 10px; top: 10px;
-  font-size: 12px; color: var(--notes-muted);
-  pointer-events: none;
+.notes-tip{
+  position:absolute; top:8px; left:10px; font-size:12px; color: var(--muted);
+  background: color-mix(in srgb, var(--card) 80%, #0000);
+  padding: 4px 8px; border-radius: 8px;
+  border: 1px solid var(--border);
 }
 
-.note-item {
-  position: absolute;
-  background: #fff;
-  border: 1px solid var(--notes-border);
+.note-item{
+  position:absolute;
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  box-shadow: 0 10px 28px rgba(0,0,0,.32);
   overflow: hidden;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.note-item:focus-within,
+.note-item:hover{ box-shadow: 0 12px 34px rgba(0,0,0,.38); border-color: color-mix(in srgb, var(--border) 70%, #fff 30%); }
+
+.note-header{
+  /* provided inline in JSX; keep here for theme reference if needed */
 }
 
-.note-textarea {
-  width: 100%;
-  height: 100%;
-  border: none;
-  resize: none;
-  padding: 10px 12px;
-  outline: none;
+.note-textarea{
+  position:absolute; inset: 0 0 0 0;
   background: transparent;
-  color: var(--notes-text);
-  font-size: 14px;
+  color: var(--text);
+  border: none;
+  outline: none;
+  resize: none; /* we use custom resize handle */
+  padding: 8px 10px 12px 10px; /* top padding is overridden inline to fit header */
+  font: inherit;
   line-height: 1.35;
 }
+.note-textarea::placeholder{ color: color-mix(in srgb, var(--muted) 80%, #0000); }
 
-.note-resize {
-  position: absolute;
-  right: 4px; bottom: 4px;
-  width: 14px; height: 14px;
-  border-right: 2px solid var(--notes-border);
-  border-bottom: 2px solid var(--notes-border);
+.note-image{
+  display:block;
+  width:100%; height:100%; object-fit:cover;
+}
+
+.note-resize{
+  position:absolute; right:0; bottom:0; width:16px; height:16px;
   cursor: nwse-resize;
 }
-
-.note-image {
-  display: block;
-  width: 100%; height: 100%;
-  object-fit: contain;
-  background: #fafafa;
+.note-resize::after{
+  content:'';
+  position:absolute; inset:0;
+  background:
+    linear-gradient(135deg, transparent 50%, var(--border) 50%),
+    linear-gradient(135deg, transparent calc(50% + 2px), color-mix(in srgb, var(--text) 30%, #0000) calc(50% + 2px));
+  background-repeat:no-repeat; background-size:100% 100%;
+  opacity:.7;
 }
 
-.notes-actions {
-  margin-left: auto;
-  display: flex; gap: 6px;
-}
-
-.notes-iconbtn {
-  border: 1px solid var(--notes-border);
-  background: #fff;
-  padding: 6px 8px;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 12px;
-}
-.notes-iconbtn:hover { border-color: var(--notes-accent); }
-
-.notes-rename-input {
-  border: 1px solid var(--notes-border);
-  padding: 4px 8px;
-  border-radius: 8px;
-  font-size: 13px;
-  width: 180px;
+@media (prefers-color-scheme: light){
+  /* Optional tuning if app ever switches tokens for light theme */
+  .notes-handle{ box-shadow: 0 8px 20px rgba(0,0,0,.15); }
+  .notes-dock{ box-shadow: 0 12px 30px rgba(0,0,0,.18); }
+  .note-item{ box-shadow: 0 8px 22px rgba(0,0,0,.18); }
 }

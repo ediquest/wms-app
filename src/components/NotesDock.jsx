@@ -139,7 +139,6 @@ export default function NotesDock() {
   }, [ui.widthPct, ui.heightPct, ui.handleOffset]);
 
   // ===== Helpers for z-index stacking =====
-  const topZ = useMemo(() => (elements.reduce((m,e)=>Math.max(m, e.zIndex||0), 0) || 0), [elements]);
   const bringToFront = useCallback(async (id) => {
     const nextZ = (elements.reduce((m,e)=>Math.max(m, e.zIndex||0), 0) || 0) + 1;
     setElements(prev => prev.map(x => x.id === id ? { ...x, zIndex: nextZ } : x));
@@ -153,8 +152,7 @@ export default function NotesDock() {
     const x = clamp(e.clientX - rect.left - 120, 8, rect.width - 248);
     const y = clamp(e.clientY - rect.top - 60, 8, rect.height - 140);
     const el = await newTextElement(activeTabId, x, y);
-    // ustaw najwyższy zIndex dla świeżej notatki
-    const nextZ = topZ + 1;
+    const nextZ = (elements.reduce((m,e)=>Math.max(m, e.zIndex||0), 0) || 0) + 1;
     setElements(prev => [...prev, { ...el, zIndex: nextZ }]);
     try { await moveResizeElement(el.id, { zIndex: nextZ }); } catch {}
     setTimeout(() => {
@@ -171,7 +169,7 @@ export default function NotesDock() {
         const blob = it.getAsFile();
         const el = await addImageElement(activeTabId, blob, 16, 16);
         const url = await getBlobUrl(el.blobId);
-        const nextZ = topZ + 1;
+        const nextZ = (elements.reduce((m,e)=>Math.max(m, e.zIndex||0), 0) || 0) + 1;
         setElements(prev => [...prev, { ...el, url, zIndex: nextZ }]);
         try { await moveResizeElement(el.id, { zIndex: nextZ }); } catch {}
         evt.preventDefault();
@@ -187,7 +185,7 @@ export default function NotesDock() {
       if (f.type.startsWith('image/')) {
         const el = await addImageElement(activeTabId, f, 24, 24);
         const url = await getBlobUrl(el.blobId);
-        const nextZ = topZ + 1;
+        const nextZ = (elements.reduce((m,e)=>Math.max(m, e.zIndex||0), 0) || 0) + 1;
         setElements(prev => [...prev, { ...el, url, zIndex: nextZ }]);
         try { await moveResizeElement(el.id, { zIndex: nextZ }); } catch {}
       }
@@ -214,7 +212,6 @@ export default function NotesDock() {
   const startDrag = (id, startX, startY) => {
     const el = elements.find(e => e.id === id);
     if (!el) return;
-    // bring to front on drag start
     bringToFront(id);
     const mm = (e) => {
       const dx = e.clientX - startX;
@@ -268,7 +265,7 @@ export default function NotesDock() {
 
   return (
     <>
-      <div className="notes-handle" title={t('notes.open', 'Otwórz/Zamknij Notes')} onClick={toggleOpen}>
+      <div className={`notes-handle ${ui.open ? 'on' : 'off'}`} title={t('notes.open', 'Otwórz/Zamknij Notes')} onClick={toggleOpen}>
         <div className="label">{t('notes.title','Notes')}</div>
       </div>
 
@@ -360,7 +357,6 @@ function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText
     left: el.x, top: el.y, width: el.width, height: el.height, zIndex: el.zIndex || 0
   }), [el.x, el.y, el.width, el.height, el.zIndex]);
 
-  // Lokalny stan tekstu + debounced zapis
   const [val, setVal] = useState(el.content || '');
   const saveTimerRef = useRef(null);
   useEffect(() => { setVal(el.content || ''); }, [el.id]);
@@ -370,7 +366,6 @@ function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText
     return () => clearTimeout(saveTimerRef.current);
   }, [val]);
 
-  // Drag możliwy tylko z nagłówka (zakładki)
   const headerRef = useRef(null);
   useEffect(() => {
     const header = headerRef.current;
@@ -384,7 +379,6 @@ function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText
     return () => header.removeEventListener('mousedown', md);
   }, [onDragStart, onBringToFront]);
 
-  // Klik w dowolne miejsce notatki też podbija z-index (bez drag)
   const onContainerMouseDown = () => onBringToFront?.();
 
   const HEADER_H = 28;
@@ -400,7 +394,7 @@ function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText
           display:'flex', alignItems:'center', justifyContent:'space-between',
           padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,.06)',
           background: 'linear-gradient(to bottom, rgba(0,0,0,.04), rgba(0,0,0,.02))',
-          cursor:'grab', userSelect:'none'
+          cursor:'grab', userSelect:'none', zIndex: 2
         }}
       >
         <span style={{ fontSize:12, opacity:.6 }}>{t('notes.card','Notatka')}</span>
@@ -420,7 +414,7 @@ function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText
           onChange={(e)=>setVal(e.target.value)}
           placeholder={t('notes.placeholder','Twoja notatka…')}
           spellCheck={false}
-          style={{ paddingTop: HEADER_H + 6 }}
+          style={{ position:'absolute', top: HEADER_H, left:0, right:0, bottom:0, zIndex: 1 }}
         />
       ) : (
         <div style={{ position:'absolute', top: HEADER_H, left:0, right:0, bottom:0, overflow:'hidden' }}>
