@@ -2,12 +2,12 @@
 /* NotesDock theme-aware styles */
 /* Uses global design tokens from :root (styles.css): --bg, --card, --text, --muted, --accent, --border */
 
-.notes-handle{
+.notes-handle{ box-shadow: 0 8px 24px rgba(0,0,0,.22), 0 2px 6px rgba(0,0,0,.12); position: fixed; right: 12px !important; left: auto !important; z-index: 2147483647;
   position: fixed;
-  
+  right: calc(var(--dock-width, 60vw));
   top: calc(50vh + var(--handle-offset, 0px));
   transform: translateY(-50%);
-  z-index: 9999;
+  z-index: 60;
   background: var(--card);
   color: var(--text);
   border: 1px solid var(--border);
@@ -161,7 +161,7 @@
 
 @media (prefers-color-scheme: light){
   /* Optional tuning if app ever switches tokens for light theme */
-  .notes-handle{ box-shadow: 0 8px 20px rgba(0,0,0,.15); }
+  .notes-handle{ box-shadow: 0 8px 24px rgba(0,0,0,.22), 0 2px 6px rgba(0,0,0,.12); position: fixed; right: 12px !important; left: auto !important; z-index: 2147483647; box-shadow: 0 8px 20px rgba(0,0,0,.15); }
   .notes-dock{
   position: fixed;
   right: 12px;
@@ -226,7 +226,7 @@
 }
 
 /* === RESTYLE .notes-handle as vertical teal tab that sticks to the dock (right side) === */
-.notes-handle{
+.notes-handle{ box-shadow: 0 8px 24px rgba(0,0,0,.22), 0 2px 6px rgba(0,0,0,.12); position: fixed; right: 12px !important; left: auto !important; z-index: 2147483647;
   background: #27b3a7 !important;
   color: #fff !important;
   border: 1px solid rgba(0,0,0,.12) !important;
@@ -250,14 +250,14 @@
 
 .notes-handle:hover{ background:#1f9087 !important; }
 /* --- HANDLE transform-based offset & strong right stickiness --- */
-.notes-handle{
+.notes-handle{ box-shadow: 0 8px 24px rgba(0,0,0,.22), 0 2px 6px rgba(0,0,0,.12); position: fixed; right: 12px !important; left: auto !important; z-index: 2147483647;
   transform: translateY(var(--handle-offset, 0px));
 }
 
 
 
 /* --- ULTIMATE OVERRIDE to ensure right alignment wins over any leftover rules --- */
-:where(html, body) .notes-handle{ left: auto !important; }
+:where(html, body) .notes-handle{ box-shadow: 0 8px 24px rgba(0,0,0,.22), 0 2px 6px rgba(0,0,0,.12); position: fixed; right: 12px !important; left: auto !important; z-index: 2147483647; left: auto !important; }
 /* --- SPRINGY dock animation --- */
 .notes-dock {
   transition: transform .5s cubic-bezier(.34,1.56,.64,1), opacity .3s ease;
@@ -278,7 +278,7 @@
 
 .notes-handle.dragging{ transition: none !important; }
 
-:where(html,body) .notes-handle{ left: auto !important; }
+:where(html,body) .notes-handle{ box-shadow: 0 8px 24px rgba(0,0,0,.22), 0 2px 6px rgba(0,0,0,.12); position: fixed; right: 12px !important; left: auto !important; z-index: 2147483647; left: auto !important; }
 
 /* --- Dock resizers (top & left) --- */
 .notes-dock .dock-resize-n{ position:absolute; left:0; right:0; top:0; height:14px; cursor: ns-resize; z-index:3; }

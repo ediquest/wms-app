@@ -23,7 +23,6 @@ export default function NotesDock() {
   const canvasRef = useRef(null);
   const panelRef = useRef(null);
   const [handleTop, setHandleTop] = useState(null);
-  const [handleLeft, setHandleLeft] = useState(null);
   const dockResizeRef = useRef({ mode:null, startX:0, startY:0, startW:0, startH:0 });
   const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 0, startW: 0, startH: 0, startOff: 0 });
 
@@ -105,11 +104,6 @@ export default function NotesDock() {
         const r = el.getBoundingClientRect();
         const top = r.top + (r.height / 2);
         setHandleTop(top);
-        const handleEl = document.querySelector('.notes-handle');
-        const hw = (handleEl?.getBoundingClientRect()?.width || 28);
-        const gap = 8;
-        const left = r.left - hw - gap;
-        setHandleLeft(left);
       } catch {}
     };
     recalc();
@@ -151,11 +145,20 @@ export default function NotesDock() {
         half - margin
       );
       if (ui.open) {
-        let widthPct  = clamp(dragHandleRef.current.startW + dx / vw, 0.3, 0.9);
-        let heightPct = clamp(dragHandleRef.current.startH + dy / vh, 0.3, 0.8);
-        setUi(u => ({ ...u, widthPct, heightPct, handleOffset }));
+        // do nothing to handleOffset while open (immobile)
+        return;
       } else {
-        setUi(u => ({ ...u, handleOffset }));
+        
+      // CLOSED: clamp vertical drag to full viewport height
+      const handleEl = document.querySelector('.notes-handle');
+      const hh = handleEl ? handleEl.getBoundingClientRect().height : 32;
+      const desiredTop = Math.round(window.innerHeight/2 + (dragHandleRef.current.startOff + (e.clientY - dragHandleRef.current.startY)) - hh/2);
+      const minTop = 6;
+      const maxTop = Math.max(6, Math.round(window.innerHeight - 6 - hh));
+      const clampedTop = Math.max(minTop, Math.min(maxTop, desiredTop));
+      const handleOffset = (clampedTop + Math.round(hh/2)) - Math.round(window.innerHeight/2);
+      setUi(u => ({ ...u, handleOffset }));
+     }));
       }
     };
     const handleUp = () => {
@@ -165,6 +168,7 @@ export default function NotesDock() {
       document.removeEventListener('mouseup', handleUp);
     };
     const start = (e) => {
+      if (ui.open) return;
       try { document.querySelector('.notes-handle')?.classList.add('dragging'); } catch {}
       dragHandleRef.current.dragging = true;
       dragHandleRef.current.moved = false;
@@ -374,15 +378,9 @@ if (!ready) return null;
   // Handle glued to dock when open; at right edge when closed
   const widthPct = typeof ui.widthPct === 'number' ? ui.widthPct : 0.6;
   const handleStyle = {
-    right: ui.open ? 'auto' : '12px',
-    left:  ui.open && handleLeft != null ? `${Math.round(handleLeft)}px` : 'auto',
-    top:  ui.open && handleTop != null
-          ? `${Math.round(handleTop)}px`
-          : `calc(50vh + ${(ui.handleOffset || 0)}px)`
-  }vw + 12px)` : '12px',
-    top:  ui.open && handleTop != null
-          ? `${Math.round(handleTop)}px`
-          : `calc(50vh + ${(ui.handleOffset || 0)}px)`
+    right: '12px',
+    left: 'auto',
+    top: `calc(50vh + ${(ui.handleOffset || 0)}px)`
   };
 
 
