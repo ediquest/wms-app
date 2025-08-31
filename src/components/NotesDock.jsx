@@ -23,6 +23,7 @@ export default function NotesDock() {
   const canvasRef = useRef(null);
   const panelRef = useRef(null);
   const [handleTop, setHandleTop] = useState(null);
+  const [handleLeft, setHandleLeft] = useState(null);
   const dockResizeRef = useRef({ mode:null, startX:0, startY:0, startW:0, startH:0 });
   const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 0, startW: 0, startH: 0, startOff: 0 });
 
@@ -104,6 +105,11 @@ export default function NotesDock() {
         const r = el.getBoundingClientRect();
         const top = r.top + (r.height / 2);
         setHandleTop(top);
+        const handleEl = document.querySelector('.notes-handle');
+        const hw = (handleEl?.getBoundingClientRect()?.width || 28);
+        const gap = 8;
+        const left = r.left - hw - gap;
+        setHandleLeft(left);
       } catch {}
     };
     recalc();
@@ -368,7 +374,12 @@ if (!ready) return null;
   // Handle glued to dock when open; at right edge when closed
   const widthPct = typeof ui.widthPct === 'number' ? ui.widthPct : 0.6;
   const handleStyle = {
-    right: ui.open ? `calc(${Math.round(widthPct * 100)}vw + 12px)` : '12px',
+    right: ui.open ? 'auto' : '12px',
+    left:  ui.open && handleLeft != null ? `${Math.round(handleLeft)}px` : 'auto',
+    top:  ui.open && handleTop != null
+          ? `${Math.round(handleTop)}px`
+          : `calc(50vh + ${(ui.handleOffset || 0)}px)`
+  }vw + 12px)` : '12px',
     top:  ui.open && handleTop != null
           ? `${Math.round(handleTop)}px`
           : `calc(50vh + ${(ui.handleOffset || 0)}px)`

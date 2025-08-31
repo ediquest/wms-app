@@ -4,10 +4,10 @@
 
 .notes-handle{
   position: fixed;
-  right: calc(var(--dock-width, 60vw));
+  
   top: calc(50vh + var(--handle-offset, 0px));
   transform: translateY(-50%);
-  z-index: 60;
+  z-index: 9999;
   background: var(--card);
   color: var(--text);
   border: 1px solid var(--border);
@@ -187,8 +187,8 @@
 /* ensure notes tabs don't shrink inside ScrollTabs */
 .tabsScroll .notes-tab{ flex:0 0 auto; }
 
-.notes-handle.on{ right: calc(var(--dock-width, 60vw) + 12px); }
-.notes-handle.off{ right: 12px; }
+
+
 
 .note-resize-e{ position:absolute; top:0; right:-6px; width:12px; height:100%; cursor: ew-resize; }
 .note-resize-s{ position:absolute; left:0; bottom:-6px; width:100%; height:12px; cursor: ns-resize; }
@@ -253,8 +253,8 @@
 .notes-handle{
   transform: translateY(var(--handle-offset, 0px));
 }
-.notes-handle.on{ right: calc(var(--dock-width, 60vw) + 12px) !important; }
-.notes-handle.off{ right: 12px !important; }
+
+
 
 /* --- ULTIMATE OVERRIDE to ensure right alignment wins over any leftover rules --- */
 :where(html, body) .notes-handle{ left: auto !important; }
