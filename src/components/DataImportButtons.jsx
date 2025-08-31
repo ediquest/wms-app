@@ -1,12 +1,19 @@
 import React, { useRef, useState } from 'react';
 import { saveConfig } from '../utils';
 import LightModal from './LightModal';
+import { parseInterfaceFromWorkbook, isValidXlsFileName, inferTypeFromName, suggestIdFromFilename } from '../utils/parseXlsInterface.js';
+import * as XLSX from 'xlsx';
 
 /** Ikony + modale do importu CSV/JSON; pola FLEX, wszystko w sekcji 1 */
 export default function DataImportButtons({ cfg, setCfg, t }) {
   // refs
   const jsonDataFileRef = useRef(null);
   const csvDataFileRef  = useRef(null);
+  const xlsInputRef = useRef(null);
+
+  // XLS modal state
+  const [showXlsModal, setShowXlsModal] = useState(false);
+  const [xlsItems, setXlsItems] = useState([]); // {file, name, valid, reason, type, iface|null}
 
   // ----- helpers -----
   const baseNameOf = (fname) => String(fname||'').replace(/\.[^.]+$/, '');
@@ -139,8 +146,7 @@ export default function DataImportButtons({ cfg, setCfg, t }) {
         const next = { ...cfg, interfaces: (cfg.interfaces||[]).concat(iface) };
         setCfg(next); saveConfig(next);
         setShowJsonModal(false); setJsonFile(null);
-        setNotice({ open: true, msg: t?.('importDone') || 'Import zakończony.' });
-      }catch(err){ console.error(err); setJsonParseError(t?.('invalidJson') || 'Nieprawidłowy JSON.'); }
+        }catch(err){ console.error(err); setJsonParseError(t?.('invalidJson') || 'Nieprawidłowy JSON.'); }
     };
     reader.readAsText(f);
   }
@@ -207,29 +213,72 @@ export default function DataImportButtons({ cfg, setCfg, t }) {
         const next = { ...cfg, interfaces: (cfg.interfaces||[]).concat(iface) };
         setCfg(next); saveConfig(next);
         setShowCsvModal(false); setCsvFile(null);
-        setNotice({ open: true, msg: t?.('importDone') || 'Import zakończony.' });
-      }catch(err){ console.error(err); setCsvError(t?.('invalidCsv') || 'Nie udało się sparsować CSV.'); }
+        }catch(err){ console.error(err); setCsvError(t?.('invalidCsv') || 'Nie udało się sparsować CSV.'); }
     };
     r.readAsText(f);
   }
 
-  // ---------- notice modal ----------
-  const [notice, setNotice] = useState({ open: false, msg: '' });
+  
+  // ---------- XLS import ----------
+  function validateXlsFile(f){
+    const name = String(f?.name||'');
+    if (!isValidXlsFileName(name)){
+      const okExt = /\.xls$/i.test(name);
+      const okPrefix = String(name).toUpperCase().startsWith('EN_INT_WB');
+      return { ok:false, reason: !okPrefix ? (t?.('xlsInvalidPrefix') || 'Nazwa musi zaczynać się od \"EN_INT_WB\"') : (t?.('xlsInvalidExt') || 'Dozwolone tylko .xls') };
+    }
+    return { ok:true, reason:'' };
+  }
 
+  function addXlsFiles(files){
+    const arr = Array.from(files||[]);
+    if (!arr.length) return;
+    const next = [...xlsItems];
+    arr.forEach(f => {
+      const v = validateXlsFile(f);
+      const name = String(f.name||'');
+      const type = inferTypeFromName(name);
+      next.push({ file: f, name, valid: v.ok, reason: v.reason, type, iface: null, parsing: v.ok });
+      if (v.ok){
+        const reader = new FileReader();
+        reader.onload = () => {
+          try{
+            const wb = XLSX.read(new Uint8Array(reader.result), { type: 'array' });
+            const stem = name.replace(/\.[^.]+$/, '');
+            const iface = parseInterfaceFromWorkbook(wb, stem);
+            iface.id = ensureUniqueId(suggestIdFromFilename(stem), cfg);
+            iface.name = ensureUniqueName(stem, cfg);
+            iface.ifaceType = type;
+            // App will normalize later; keep sections as-is
+            const idx = next.findIndex(it => it.file === f);
+            if (idx >= 0){ next[idx] = { ...next[idx], iface, parsing: false }; setXlsItems([...next]); }
+          }catch(err){
+            console.error('XLS parse error', err);
+            const idx = next.findIndex(it => it.file === f);
+            if (idx >= 0){ next[idx] = { ...next[idx], parsing: false, valid: false, reason: t?.('xlsParseError') || 'Błąd parsowania pliku XLS' }; setXlsItems([...next]); }
+          }
+        };
+        reader.readAsArrayBuffer(f);
+      }
+    });
+    setXlsItems(next);
+  }
+
+  function resetXls(){
+    setXlsItems([]);
+  }
+
+  function onImportXlsAll(){
+    const good = xlsItems.filter(it => it.valid && it.iface);
+    if (!good.length) return;
+    const next = { ...cfg, interfaces: [...(cfg.interfaces||[]), ...good.map(it => it.iface)] };
+    setCfg(next); saveConfig(next);
+    setShowXlsModal(false); resetXls();
+    }
   // ---------- UI ----------
   return (
     <>
-      {/* Notice (po imporcie) */}
-      <LightModal
-        open={notice.open}
-        onClose={()=>setNotice({open:false, msg:''})}
-        title={t?.('notice') || (t?.('importCsvTitle') || 'Import CSV')}
-        footer={<button className="btn primary" onClick={()=>setNotice({open:false, msg:''})}>{t?.('ok') || 'OK'}</button>}
-      >
-        {notice.msg}
-      </LightModal>
-
-      {/* Modal: JSON */}
+      {/* Notice (po imporcie) */}{/* Modal: JSON */}
       <LightModal
         open={showJsonModal}
         onClose={()=>setShowJsonModal(false)}
@@ -319,6 +368,51 @@ export default function DataImportButtons({ cfg, setCfg, t }) {
           onChange={(e)=>{ const f = e.target.files?.[0]; if (f){ setCsvFile(f); setCsvDupWarn((cfg?.interfaces||[]).some(it => it.name === baseNameOf(f.name))); setCsvError(''); } }} />
       </LightModal>
 
+
+      {/* Modal: XLS */}
+      <LightModal
+        open={showXlsModal}
+        onClose={()=>{ setShowXlsModal(false); resetXls(); }}
+        title={t?.('importXlsTitle') || 'Import XLS (interfejs)'}
+        footer={
+          <>
+            <button className="btn" onClick={()=>{ setShowXlsModal(false); resetXls(); }}>{t?.('cancel') || 'Anuluj'}</button>
+            <button className="btn primary" disabled={!xlsItems.some(it => it.valid && it.iface)} onClick={onImportXlsAll}>{t?.('importAll') || 'Importuj wszystko'}</button>
+          </>
+        }
+      >
+        <div className="row" style={{marginBottom:12}}>
+          <div className="hint">{t?.('chooseXls') || 'Wybierz plik(i) XLS do importu'}</div>
+          <span className="spacer" />
+          <button className="btn" onClick={()=>xlsInputRef.current?.click()}>{t?.('chooseFile') || 'Wybierz plik'}</button>
+          <input ref={xlsInputRef} type="file" accept=".xls" multiple style={{display:'none'}}
+            onChange={(e)=>{ addXlsFiles(e.target.files); e.currentTarget.value=''; }} />
+        </div>
+        <div
+          className="dropzone"
+          style={{ minHeight: 220, padding: 16 }}
+          onDragOver={(e)=>{e.preventDefault();}}
+          onDrop={(e)=>{ e.preventDefault(); addXlsFiles(e.dataTransfer.files); }}
+        >
+          <div className="hint">{t?.('xlsDropHint') || 'Przeciągnij pliki .xls tutaj (nazwa musi zaczynać się od EN_INT_WB)'}</div>
+        </div>
+
+        <div style={{marginTop:12, maxHeight:260, overflow:'auto'}}>
+          {!xlsItems.length ? <div className="hint">{t?.('noFiles') || 'Brak plików.'}</div> : null}
+          {xlsItems.map((it, idx) => (
+            <div key={idx} className="row" style={{ gap: 8, alignItems:'center', borderBottom:'1px solid var(--border)', padding:'6px 0' }}>
+              <div style={{minWidth:220}}><strong>{it.name}</strong></div>
+              <div style={{minWidth:70}}>{t?.('xlsType') || 'Typ'}: <strong>{it.type}</strong></div>
+              <div className="hint" style={{flex:1}}>
+                {it.parsing ? (t?.('parsing') || 'Parsowanie…')
+                  : it.valid ? (it.iface ? (t?.('xlsParsedOk') || 'OK') : (t?.('pending') || 'Oczekuje…'))
+                  : <span style={{color:'#c33'}}>{it.reason || (t?.('invalidFile') || 'Niepoprawny plik')}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </LightModal>
+
       {/* Przyciski w pasku */}
       <span style={{ display: 'inline-flex', gap: 8, marginLeft: 8 }}>
         <button className="btn iconOnly" title="Import CSV" onClick={() => { setShowCsvModal(true); setCsvFile(null); setCsvError(''); setCsvDupWarn(false); }} aria-label="Import CSV">
@@ -331,6 +425,13 @@ export default function DataImportButtons({ cfg, setCfg, t }) {
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M10 4c-3 0-4 2-4 4v2c0 1.1-.9 2-2 2 1.1 0 2 .9 2 2v2c0 2 1 4 4 4"/>
             <path d="M14 4c3 0 4 2 4 4v2c0 1.1.9 2 2 2-1.1 0-2 .9-2 2v2c0 2-1 4-4 4"/>
+          </svg>
+        </button>
+        <button className="btn iconOnly" title="Import XLS (interfejs)" onClick={() => { setShowXlsModal(true); }} aria-label="Import XLS">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M4 9h16M8 3v18"/>
+            <path d="M12 14l2 3 3-6"/>
           </svg>
         </button>
       </span>

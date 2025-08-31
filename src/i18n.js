@@ -219,7 +219,49 @@ const dict = {
     idDuplicates: 'ID duplicates',
     nameDuplicates: 'Name duplicates',
     importSummary: 'Import summary',
-    importResultCounts: 'Added: {added}, Overwritten: {overwritten}',},
+    importResultCounts: 'Added: {added}, Overwritten: {overwritten}',
+    notes: "Notes",
+
+    notes_title: "Notes",
+
+    notes_open: "Open/Close Notes",
+
+    notes_tabs: "Tabs",
+
+    notes_addTab: "Add tab",
+
+    notes_deleteTabConfirm: "Delete tab?",
+
+    notes_placeholder: "Your note…",
+
+    notes_trash: "Trash",
+
+    notes_trashEmpty: "Trash is empty",
+
+    notes_restore: "Restore",
+
+    notes_deleteForever: "Delete forever",
+
+    notes_align: "Align",
+    notes_title: 'Notes',
+notes_open: 'Open/Close Notes',
+notes_tabs: 'Tabs',
+notes_addTab: 'Add tab',
+notes_newTab: 'New tab',
+notes_deleteTabConfirm: 'Delete tab?',
+notes_placeholder: 'Your note…',
+notes_trash: 'Trash',
+notes_trashEmpty: 'Trash is empty',
+notes_restore: 'Restore',
+notes_deleteForever: 'Delete forever',
+notes_align: 'Align',
+notes_hintShort: 'Tip: double-click the grid to add a note. Paste image with Ctrl+V.',
+notes_tip: 'Double-click to add a note. Drag, resize. Paste/drop image.',
+notes_rename: 'Rename',
+notes_delete: 'Delete',
+notes_tab: 'Tab',
+notes_card: 'Note',
+},
 
   pl: {
     andMore: '+{count} więcej…',
@@ -436,7 +478,49 @@ const dict = {
     idDuplicates: 'Duplikaty ID',
     nameDuplicates: 'Duplikaty nazw',
     importSummary: 'Podsumowanie importu',
-    importResultCounts: 'Dodano: {added}, Nadpisano: {overwritten}',},
+    importResultCounts: 'Dodano: {added}, Nadpisano: {overwritten}',
+    notes: "Notatnik",
+
+    notes_title: "Notatnik",
+
+    notes_open: "Otwórz/Zamknij Notes",
+
+    notes_tabs: "Zakładki",
+
+    notes_addTab: "Dodaj zakładkę",
+
+    notes_deleteTabConfirm: "Usunąć zakładkę?",
+
+    notes_placeholder: "Twoja notatka…",
+
+    notes_trash: "Kosz",
+
+    notes_trashEmpty: "Kosz jest pusty",
+
+    notes_restore: "Przywróć",
+
+    notes_deleteForever: "Usuń trwale",
+
+    notes_align: "Wyrównaj",
+    notes_title: 'Notatnik',
+notes_open: 'Otwórz/Zamknij Notatnik',
+notes_tabs: 'Zakładki',
+notes_addTab: 'Dodaj zakładkę',
+notes_newTab: 'Nowa zakładka',
+notes_deleteTabConfirm: 'Usunąć zakładkę?',
+notes_placeholder: 'Twoja notatka…',
+notes_trash: 'Kosz',
+notes_trashEmpty: 'Kosz jest pusty',
+notes_restore: 'Przywróć',
+notes_deleteForever: 'Usuń trwale',
+notes_align: 'Wyrównaj',
+notes_hintShort: 'Wskazówka: kliknij dwukrotnie siatkę, aby dodać notatkę. Wklej obrazek Ctrl+V.',
+notes_tip: 'Kliknij dwukrotnie, aby dodać notatkę. Przeciągaj, zmieniaj rozmiar. Wklej/upuść obrazek.',
+notes_rename: 'Zmień nazwę',
+notes_delete: 'Usuń',
+notes_tab: 'Zakładka',
+notes_card: 'Notatka',
+},
 
   fr: {
     andMore: '+{count} de plus…',
@@ -654,6 +738,24 @@ const dict = {
     nameDuplicates: 'Doublons de nom',
     importSummary: 'Récapitulatif d\'import',
     importResultCounts: 'Ajoutés : {added}, Écrasés : {overwritten}',},
+    notes_title: 'Notes',
+notes_open: 'Ouvrir/Fermer les notes',
+notes_tabs: 'Onglets',
+notes_addTab: 'Ajouter un onglet',
+notes_newTab: 'Nouvel onglet',
+notes_deleteTabConfirm: 'Supprimer l’onglet ?',
+notes_placeholder: 'Votre note…',
+notes_trash: 'Corbeille',
+notes_trashEmpty: 'La corbeille est vide',
+notes_restore: 'Restaurer',
+notes_deleteForever: 'Supprimer définitivement',
+notes_align: 'Aligner',
+notes_hintShort: 'Astuce : double-cliquez la grille pour ajouter une note. Collez une image avec Ctrl+V.',
+notes_tip: 'Double-cliquez pour ajouter une note. Glissez, redimensionnez. Collez/déposez une image.',
+notes_rename: 'Renommer',
+notes_delete: 'Supprimer',
+notes_tab: 'Onglet',
+notes_card: 'Note',
 
   cs: {
     andMore: '+{count} další…',
@@ -871,6 +973,24 @@ const dict = {
     nameDuplicates: 'Duplicitní názvy',
     importSummary: 'Souhrn importu',
     importResultCounts: 'Přidáno: {added}, Přepsáno: {overwritten}',},
+    notes_title: 'Poznámky',
+notes_open: 'Otevřít/Zavřít poznámky',
+notes_tabs: 'Záložky',
+notes_addTab: 'Přidat záložku',
+notes_newTab: 'Nová záložka',
+notes_deleteTabConfirm: 'Smazat záložku?',
+notes_placeholder: 'Vaše poznámka…',
+notes_trash: 'Koš',
+notes_trashEmpty: 'Koš je prázdný',
+notes_restore: 'Obnovit',
+notes_deleteForever: 'Smazat trvale',
+notes_align: 'Zarovnat',
+notes_hintShort: 'Tip: dvojklikem do mřížky přidáte poznámku. Obrázek vložíte Ctrl+V.',
+notes_tip: 'Dvojklik pro přidání poznámky. Tažení, změna velikosti. Vložit/přetáhnout obrázek.',
+notes_rename: 'Přejmenovat',
+notes_delete: 'Smazat',
+notes_tab: 'Záložka',
+notes_card: 'Poznámka',
 
   de: {
     andMore: '+{count} mehr…',
@@ -1088,6 +1208,24 @@ const dict = {
     nameDuplicates: 'Namensduplikate',
     importSummary: 'Import-Zusammenfassung',
     importResultCounts: 'Hinzugefügt: {added}, Überschrieben: {overwritten}',},
+    notes_title: 'Notizen',
+notes_open: 'Notizen öffnen/schließen',
+notes_tabs: 'Tabs',
+notes_addTab: 'Tab hinzufügen',
+notes_newTab: 'Neuer Tab',
+notes_deleteTabConfirm: 'Tab löschen?',
+notes_placeholder: 'Ihre Notiz…',
+notes_trash: 'Papierkorb',
+notes_trashEmpty: 'Papierkorb ist leer',
+notes_restore: 'Wiederherstellen',
+notes_deleteForever: 'Endgültig löschen',
+notes_align: 'Ausrichten',
+notes_hintShort: 'Tipp: Doppelklick ins Raster fügt eine Notiz hinzu. Bild mit Strg+V einfügen.',
+notes_tip: 'Doppelklicken zum Hinzufügen. Ziehen, Größe ändern. Bild einfügen/ablegen.',
+notes_rename: 'Umbenennen',
+notes_delete: 'Löschen',
+notes_tab: 'Tab',
+notes_card: 'Notiz',
 
   es: {
     andMore: '+{count} más…',
@@ -1305,6 +1443,24 @@ const dict = {
     nameDuplicates: 'Duplicados de nombre',
     importSummary: 'Resumen de importación',
     importResultCounts: 'Añadidos: {added}, Sobrescritos: {overwritten}',},
+    notes_title: 'Notas',
+notes_open: 'Abrir/Cerrar notas',
+notes_tabs: 'Pestañas',
+notes_addTab: 'Añadir pestaña',
+notes_newTab: 'Nueva pestaña',
+notes_deleteTabConfirm: '¿Eliminar pestaña?',
+notes_placeholder: 'Tu nota…',
+notes_trash: 'Papelera',
+notes_trashEmpty: 'La papelera está vacía',
+notes_restore: 'Restaurar',
+notes_deleteForever: 'Eliminar definitivamente',
+notes_align: 'Alinear',
+notes_hintShort: 'Consejo: haz doble clic en la cuadrícula para añadir una nota. Pega una imagen con Ctrl+V.',
+notes_tip: 'Doble clic para añadir. Arrastra, cambia tamaño. Pega/suelta imagen.',
+notes_rename: 'Renombrar',
+notes_delete: 'Eliminar',
+notes_tab: 'Pestaña',
+notes_card: 'Nota',
 
   it: {
     andMore: '+{count} in più…',
@@ -1511,6 +1667,24 @@ const dict = {
     importResultCounts: 'Aggiunti: {added}, Sovrascritti: {overwritten}',
     onlySingleMode: 'Questa opzione è disponibile solo in modalità interfaccia singola.',
     chooseExcel: 'Scegli un file Excel…',},
+    notes_title: 'Note',
+notes_open: 'Apri/Chiudi note',
+notes_tabs: 'Schede',
+notes_addTab: 'Aggiungi scheda',
+notes_newTab: 'Nuova scheda',
+notes_deleteTabConfirm: 'Eliminare la scheda?',
+notes_placeholder: 'La tua nota…',
+notes_trash: 'Cestino',
+notes_trashEmpty: 'Il cestino è vuoto',
+notes_restore: 'Ripristina',
+notes_deleteForever: 'Elimina definitivamente',
+notes_align: 'Allinea',
+notes_hintShort: 'Suggerimento: doppio clic sulla griglia per aggiungere una nota. Incolla un’immagine con Ctrl+V.',
+notes_tip: 'Doppio clic per aggiungere. Trascina, ridimensiona. Incolla/trascina un’immagine.',
+notes_rename: 'Rinomina',
+notes_delete: 'Elimina',
+notes_tab: 'Scheda',
+notes_card: 'Nota',
 
 
 
@@ -1555,4 +1729,136 @@ export function setTranslations(lang, entries) {
 
 export function availableLangs() {
   return Object.keys(dict);
+}
+
+// === XLS Import keys (added) ===
+try {
+  setTranslations('en', {
+    importXlsTitle: 'Import XLS (interface)',
+    chooseXls: 'Choose XLS file(s) to import',
+    chooseFile: 'Choose file',
+    xlsDropHint: 'Drag .xls files here (name must start with EN_INT_WB)',
+    noFiles: 'No files.',
+    xlsType: 'Type',
+    parsing: 'Parsing…',
+    pending: 'Pending…',
+    xlsParsedOk: 'OK',
+    invalidFile: 'Invalid file',
+    importAll: 'Import all',
+    cancel: 'Cancel',
+    importDone: 'Import completed.',
+    xlsInvalidPrefix: 'Filename must start with "EN_INT_WB"',
+    xlsInvalidExt: 'Only .xls files are allowed',
+    xlsParseError: 'XLS parse error'
+  });
+  setTranslations('pl', {
+    importXlsTitle: 'Import XLS (interfejs)',
+    chooseXls: 'Wybierz plik(i) XLS do importu',
+    chooseFile: 'Wybierz plik',
+    xlsDropHint: 'Przeciągnij pliki .xls tutaj (nazwa musi zaczynać się od EN_INT_WB)',
+    noFiles: 'Brak plików.',
+    xlsType: 'Typ',
+    parsing: 'Parsowanie…',
+    pending: 'Oczekuje…',
+    xlsParsedOk: 'OK',
+    invalidFile: 'Niepoprawny plik',
+    importAll: 'Importuj wszystko',
+    cancel: 'Anuluj',
+    importDone: 'Import zakończony.',
+    xlsInvalidPrefix: 'Nazwa musi zaczynać się od "EN_INT_WB"',
+    xlsInvalidExt: 'Dozwolone tylko .xls',
+    xlsParseError: 'Błąd parsowania pliku XLS'
+  });
+  setTranslations('fr', {
+    importXlsTitle: 'Importer XLS (interface)',
+    chooseXls: 'Choisissez des fichiers XLS à importer',
+    chooseFile: 'Choisir un fichier',
+    xlsDropHint: 'Glissez des fichiers .xls ici (le nom doit commencer par EN_INT_WB)',
+    noFiles: 'Aucun fichier.',
+    xlsType: 'Type',
+    parsing: 'Analyse…',
+    pending: 'En attente…',
+    xlsParsedOk: 'OK',
+    invalidFile: 'Fichier invalide',
+    importAll: 'Tout importer',
+    cancel: 'Annuler',
+    importDone: 'Import terminé.',
+    xlsInvalidPrefix: 'Le nom doit commencer par "EN_INT_WB"',
+    xlsInvalidExt: 'Seuls les fichiers .xls sont autorisés',
+    xlsParseError: 'Erreur d’analyse XLS'
+  });
+  setTranslations('cs', {
+    importXlsTitle: 'Import XLS (rozhraní)',
+    chooseXls: 'Vyberte soubory XLS k importu',
+    chooseFile: 'Vybrat soubor',
+    xlsDropHint: 'Přetáhněte sem soubory .xls (název musí začínat EN_INT_WB)',
+    noFiles: 'Žádné soubory.',
+    xlsType: 'Typ',
+    parsing: 'Zpracování…',
+    pending: 'Čeká…',
+    xlsParsedOk: 'OK',
+    invalidFile: 'Neplatný soubor',
+    importAll: 'Importovat vše',
+    cancel: 'Zrušit',
+    importDone: 'Import dokončen.',
+    xlsInvalidPrefix: 'Název musí začínat „EN_INT_WB“',
+    xlsInvalidExt: 'Povoleny jsou pouze soubory .xls',
+    xlsParseError: 'Chyba zpracování XLS'
+  });
+  setTranslations('de', {
+    importXlsTitle: 'XLS importieren (Interface)',
+    chooseXls: 'XLS-Datei(en) zum Import wählen',
+    chooseFile: 'Datei wählen',
+    xlsDropHint: 'Ziehen Sie .xls-Dateien hierher (Name muss mit EN_INT_WB beginnen)',
+    noFiles: 'Keine Dateien.',
+    xlsType: 'Typ',
+    parsing: 'Einlesen…',
+    pending: 'Wartet…',
+    xlsParsedOk: 'OK',
+    invalidFile: 'Ungültige Datei',
+    importAll: 'Alle importieren',
+    cancel: 'Abbrechen',
+    importDone: 'Import abgeschlossen.',
+    xlsInvalidPrefix: 'Dateiname muss mit „EN_INT_WB“ beginnen',
+    xlsInvalidExt: 'Nur .xls-Dateien erlaubt',
+    xlsParseError: 'XLS-Einlesefehler'
+  });
+  setTranslations('es', {
+    importXlsTitle: 'Importar XLS (interfaz)',
+    chooseXls: 'Elige archivo(s) XLS para importar',
+    chooseFile: 'Elegir archivo',
+    xlsDropHint: 'Arrastra archivos .xls aquí (el nombre debe empezar por EN_INT_WB)',
+    noFiles: 'No hay archivos.',
+    xlsType: 'Tipo',
+    parsing: 'Analizando…',
+    pending: 'Pendiente…',
+    xlsParsedOk: 'OK',
+    invalidFile: 'Archivo no válido',
+    importAll: 'Importar todo',
+    cancel: 'Cancelar',
+    importDone: 'Importación completada.',
+    xlsInvalidPrefix: 'El nombre debe empezar por "EN_INT_WB"',
+    xlsInvalidExt: 'Solo se permiten archivos .xls',
+    xlsParseError: 'Error al analizar XLS'
+  });
+  setTranslations('it', {
+    importXlsTitle: 'Importa XLS (interfaccia)',
+    chooseXls: 'Scegli file XLS da importare',
+    chooseFile: 'Scegli file',
+    xlsDropHint: 'Trascina qui file .xls (il nome deve iniziare con EN_INT_WB)',
+    noFiles: 'Nessun file.',
+    xlsType: 'Tipo',
+    parsing: 'Analisi…',
+    pending: 'In attesa…',
+    xlsParsedOk: 'OK',
+    invalidFile: 'File non valido',
+    importAll: 'Importa tutto',
+    cancel: 'Annulla',
+    importDone: 'Import completato.',
+    xlsInvalidPrefix: 'Il nome deve iniziare con "EN_INT_WB"',
+    xlsInvalidExt: 'Sono consentiti solo file .xls',
+    xlsParseError: 'Errore di analisi XLS'
+  });
+} catch(e) {
+  try { console.warn('i18n XLS keys patch failed', e); } catch {}
 }

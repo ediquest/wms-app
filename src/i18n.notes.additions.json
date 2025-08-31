@@ -1,0 +1,38 @@
+{
+  "pl": {
+    "openNotes": "Otwórz notatnik",
+    "notes": "Notatnik",
+    "trash": "Kosz",
+    "openTrash": "Otwórz kosz",
+    "alignNotes": "Wyrównaj karteczki",
+    "about": "O notatniku",
+    "close": "Zamknij",
+    "delete": "Usuń",
+    "restore": "Przywróć",
+    "deleteForever": "Usuń trwale",
+    "emptyTrash": "Opróżnij kosz",
+    "trashEmpty": "Kosz jest pusty",
+    "trashHint": "Usunięte karteczki trafią tutaj. Przywrócisz je w dowolnej sekcji.",
+    "emptyTrashConfirm": "Na pewno opróżnić kosz? Tej operacji nie można cofnąć.",
+    "deleteForeverConfirm": "Usunąć trwale wybraną notatkę?",
+    "notesAbout": "Podwójne kliknięcie dodaje nową karteczkę. Przeciągnij, aby przesunąć. Złap róg, aby zmienić rozmiar. Kliknięcie poza notatnikiem zamyka panel."
+  },
+  "en": {
+    "openNotes": "Open notes",
+    "notes": "Notes",
+    "trash": "Trash",
+    "openTrash": "Open trash",
+    "alignNotes": "Align notes",
+    "about": "About",
+    "close": "Close",
+    "delete": "Delete",
+    "restore": "Restore",
+    "deleteForever": "Delete forever",
+    "emptyTrash": "Empty trash",
+    "trashEmpty": "Trash is empty",
+    "trashHint": "Deleted notes land here. You can restore them to any section.",
+    "emptyTrashConfirm": "Empty trash permanently? This cannot be undone.",
+    "deleteForeverConfirm": "Permanently delete the selected note?",
+    "notesAbout": "Double-click to add a note. Drag to move. Grab the corner to resize. Clicking outside closes the panel."
+  }
+}

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import './NotesDock.css';
 import {
@@ -21,6 +22,47 @@ export default function NotesDock() {
   const dockRef = useRef(null);
   const canvasRef = useRef(null);
   const dragHandleRef = useRef({ dragging: false, startX: 0, startY: 0, startW: 0, startH: 0, startOff: 0 });
+
+  // panelRef wskazuje kontener panelu (to samo co dockRef)
+  const panelRef = useRef(null);
+  const setDockAndPanelRef = useCallback((el) => {
+    dockRef.current = el;
+    panelRef.current = el;
+  }, []);
+
+  // [1] Zamykanie po kliknięciu poza panelem (jak modal)
+  useEffect(() => {
+    const onDown = (e) => {
+      if (!ui.open) return; // reaguj tylko gdy otwarty
+      const panel = panelRef.current;
+      if (!panel) return;
+      if (!panel.contains(e.target) && !e.target.closest?.('.notes-handle')) {
+        setUi(u => ({ ...u, open: false }));
+      }
+    };
+    document.addEventListener('mousedown', onDown, true);
+    return () => document.removeEventListener('mousedown', onDown, true);
+  }, [ui.open]);
+
+  // [2] API w window + skrót Alt+N
+  useEffect(() => {
+    window.openNotesDock  = () => setUi(u => ({ ...u, open: true }));
+    window.closeNotesDock = () => setUi(u => ({ ...u, open: false }));
+    window.toggleNotesDock= () => setUi(u => ({ ...u, open: !u.open }));
+    const onKey = (e) => {
+      if (e.altKey && e.code === 'KeyN' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        e.preventDefault();
+        setUi(u => ({ ...u, open: !u.open }));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      delete window.openNotesDock;
+      delete window.closeNotesDock;
+      delete window.toggleNotesDock;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -96,15 +138,25 @@ export default function NotesDock() {
     return () => handleEl.removeEventListener('mousedown', start);
   }, [ui.widthPct, ui.heightPct, ui.handleOffset]);
 
-  const onCanvasClick = async (e) => {
+  // ===== Helpers for z-index stacking =====
+  const topZ = useMemo(() => (elements.reduce((m,e)=>Math.max(m, e.zIndex||0), 0) || 0), [elements]);
+  const bringToFront = useCallback(async (id) => {
+    const nextZ = (elements.reduce((m,e)=>Math.max(m, e.zIndex||0), 0) || 0) + 1;
+    setElements(prev => prev.map(x => x.id === id ? { ...x, zIndex: nextZ } : x));
+    try { await moveResizeElement(id, { zIndex: nextZ }); } catch {}
+  }, [elements]);
+
+  // Double click to add new note
+  const onCanvasDoubleClick = async (e) => {
     if (!canvasRef.current || !activeTabId) return;
-    const target = e.target;
-    if (target.closest('.note-item')) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const x = clamp(e.clientX - rect.left - 120, 8, rect.width - 248);
     const y = clamp(e.clientY - rect.top - 60, 8, rect.height - 140);
     const el = await newTextElement(activeTabId, x, y);
-    setElements(prev => [...prev, el]);
+    // ustaw najwyższy zIndex dla świeżej notatki
+    const nextZ = topZ + 1;
+    setElements(prev => [...prev, { ...el, zIndex: nextZ }]);
+    try { await moveResizeElement(el.id, { zIndex: nextZ }); } catch {}
     setTimeout(() => {
       const ta = canvasRef.current?.querySelector(`[data-note="${el.id}"] textarea`);
       ta?.focus();
@@ -119,7 +171,9 @@ export default function NotesDock() {
         const blob = it.getAsFile();
         const el = await addImageElement(activeTabId, blob, 16, 16);
         const url = await getBlobUrl(el.blobId);
-        setElements(prev => [...prev, { ...el, url }]);
+        const nextZ = topZ + 1;
+        setElements(prev => [...prev, { ...el, url, zIndex: nextZ }]);
+        try { await moveResizeElement(el.id, { zIndex: nextZ }); } catch {}
         evt.preventDefault();
         break;
       }
@@ -133,7 +187,9 @@ export default function NotesDock() {
       if (f.type.startsWith('image/')) {
         const el = await addImageElement(activeTabId, f, 24, 24);
         const url = await getBlobUrl(el.blobId);
-        setElements(prev => [...prev, { ...el, url }]);
+        const nextZ = topZ + 1;
+        setElements(prev => [...prev, { ...el, url, zIndex: nextZ }]);
+        try { await moveResizeElement(el.id, { zIndex: nextZ }); } catch {}
       }
     }
   };
@@ -158,6 +214,8 @@ export default function NotesDock() {
   const startDrag = (id, startX, startY) => {
     const el = elements.find(e => e.id === id);
     if (!el) return;
+    // bring to front on drag start
+    bringToFront(id);
     const mm = (e) => {
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
@@ -178,11 +236,12 @@ export default function NotesDock() {
   const startResize = (id, startX, startY) => {
     const el = elements.find(e => e.id === id);
     if (!el) return;
+    bringToFront(id);
     const mm = (e) => {
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
-      const nw = clamp(el.width + dx, 140, Math.min(900, (canvasRef.current?.clientWidth||0) - el.x - 4));
-      const nh = clamp(el.height + dy, 80, Math.min(900, (canvasRef.current?.clientHeight||0) - el.y - 4));
+      const nw = clamp(el.width + dx, 140, Math.min(1200, (canvasRef.current?.clientWidth||0) - el.x - 4));
+      const nh = clamp(el.height + dy, 80, Math.min(1200, (canvasRef.current?.clientHeight||0) - el.y - 4));
       setElements(prev => prev.map(x => x.id === id ? { ...x, width: nw, height: nh } : x));
     };
     const mu = async () => {
@@ -213,7 +272,7 @@ export default function NotesDock() {
         <div className="label">{t('notes.title','Notes')}</div>
       </div>
 
-      <div ref={dockRef} className={`notes-dock ${ui.open ? 'open':''}`}>
+      <div ref={setDockAndPanelRef} className={`notes-dock ${ui.open ? 'open':''}`}>
         <div className="notes-topbar">
           <div className="notes-tabs" role="tablist" aria-label={t('notes.tabs','Zakładki')}>
             {tabs.map(tab => (
@@ -235,24 +294,25 @@ export default function NotesDock() {
           </div>
 
           <div className="notes-actions">
-            <button className="notes-iconbtn" onClick={()=>alert(t('notes.hintShort','Wskazówka: kliknij na siatkę, aby dodać notatkę. Wklej obrazek Ctrl+V.'))}>ℹ</button>
+            <button className="notes-iconbtn" onClick={()=>alert(t('notes.hintShort','Wskazówka: podwójnie kliknij siatkę, aby dodać notatkę. Wklej obrazek Ctrl+V.'))}>ℹ</button>
           </div>
         </div>
 
         <div
           ref={canvasRef}
           className="notes-canvas"
-          onClick={onCanvasClick}
+          onDoubleClick={onCanvasDoubleClick}
           onPaste={handlePaste}
           onDrop={handleDrop}
           onDragOver={(e)=>e.preventDefault()}
         >
-          <div className="notes-tip">{t('notes.tip','Kliknij, aby dodać notatkę. Przeciągaj, zmieniaj rozmiar. Wklej/upuść obrazek.')}</div>
+          <div className="notes-tip">{t('notes.tip','Podwójnie kliknij, aby dodać notatkę. Przeciągaj, zmieniaj rozmiar. Wklej/upuść obrazek.')}</div>
 
           {elements.map(el => (
             <NoteItem
               key={el.id}
               el={el}
+              onBringToFront={()=>bringToFront(el.id)}
               onDragStart={(sx,sy)=>startDrag(el.id, sx, sy)}
               onResizeStart={(sx,sy)=>startResize(el.id, sx, sy)}
               onChangeText={(val)=>onChangeText(el.id, val)}
@@ -295,34 +355,81 @@ function TabPill({ active, name, onClick, onRename, onDelete }) {
   );
 }
 
-function NoteItem({ el, onDragStart, onResizeStart, onChangeText, onDelete }) {
-  const boxStyle = React.useMemo(()=>({
-    left: el.x, top: el.y, width: el.width, height: el.height
-  }), [el.x, el.y, el.width, el.height]);
+function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText, onDelete }) {
+  const boxStyle = useMemo(()=>({
+    left: el.x, top: el.y, width: el.width, height: el.height, zIndex: el.zIndex || 0
+  }), [el.x, el.y, el.width, el.height, el.zIndex]);
+
+  // Lokalny stan tekstu + debounced zapis
+  const [val, setVal] = useState(el.content || '');
+  const saveTimerRef = useRef(null);
+  useEffect(() => { setVal(el.content || ''); }, [el.id]);
+  useEffect(() => {
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => { onChangeText(val); }, 300);
+    return () => clearTimeout(saveTimerRef.current);
+  }, [val]);
+
+  // Drag możliwy tylko z nagłówka (zakładki)
+  const headerRef = useRef(null);
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+    const md = (e) => {
+      onBringToFront?.();
+      onDragStart(e.clientX, e.clientY);
+      e.preventDefault();
+    };
+    header.addEventListener('mousedown', md);
+    return () => header.removeEventListener('mousedown', md);
+  }, [onDragStart, onBringToFront]);
+
+  // Klik w dowolne miejsce notatki też podbija z-index (bez drag)
+  const onContainerMouseDown = () => onBringToFront?.();
+
+  const HEADER_H = 28;
 
   return (
-    <div className="note-item" style={boxStyle} data-note={el.id}>
+    <div className="note-item" style={boxStyle} data-note={el.id} onMouseDown={onContainerMouseDown}>
+      {/* Nagłówek/zakładka do przenoszenia */}
       <div
-        style={{ position:'absolute', inset:'0', cursor: 'move' }}
-        onMouseDown={(e)=>{ if (e.target.tagName !== 'TEXTAREA') onDragStart(e.clientX, e.clientY); }}
-      />
+        ref={headerRef}
+        className="note-header"
+        style={{
+          position:'absolute', top:0, left:0, right:0, height: HEADER_H,
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding: '0 8px', borderBottom: '1px solid rgba(0,0,0,.06)',
+          background: 'linear-gradient(to bottom, rgba(0,0,0,.04), rgba(0,0,0,.02))',
+          cursor:'grab', userSelect:'none'
+        }}
+      >
+        <span style={{ fontSize:12, opacity:.6 }}>{t('notes.card','Notatka')}</span>
+        <button
+          className="notes-iconbtn"
+          onMouseDown={(e)=>e.stopPropagation()}
+          onClick={(e)=>{ e.stopPropagation(); onDelete(); }}
+          title={t('notes.delete','Usuń')}
+        >✕</button>
+      </div>
+
+      {/* Treść */}
       {el.type === 'text' ? (
         <textarea
           className="note-textarea"
-          value={el.content || ''}
-          onChange={(e)=>onChangeText(el.id, e.target.value)}
+          value={val}
+          onChange={(e)=>setVal(e.target.value)}
           placeholder={t('notes.placeholder','Twoja notatka…')}
+          spellCheck={false}
+          style={{ paddingTop: HEADER_H + 6 }}
         />
       ) : (
-        <img className="note-image" src={el.url} alt="" draggable={false}/>
+        <div style={{ position:'absolute', top: HEADER_H, left:0, right:0, bottom:0, overflow:'hidden' }}>
+          <img className="note-image" src={el.url} alt="" draggable={false} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+        </div>
       )}
-      <div className="note-resize" onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart(el.id, e.clientX, e.clientY); }} />
-      <button
-        className="notes-iconbtn"
-        style={{ position:'absolute', right: 6, top: 6 }}
-        onClick={(e)=>{ e.stopPropagation(); onDelete(); }}
-        title={t('notes.delete','Usuń')}
-      >✕</button>
+
+      {/* Uchwyt rozmiaru */}
+      <div className="note-resize" onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart(e.clientX, e.clientY); }} />
     </div>
   );
 }
