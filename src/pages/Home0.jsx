@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState , useRef, useCallback} from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { loadConfig, saveConfig, loadValues, saveValues, padToLen, timestamp, loadProjects, saveProjects, snapshotProject, applyProject } from '../utils.js';
+import { loadConfig, saveConfig, loadValues, saveValues as saveValuesCore, padToLen, timestamp, loadProjects, saveProjects, snapshotProject, applyProject} from '../utils.js';
 import { t } from '../i18n.js';
 import { saveTemplate as tplSave } from '../utils.templates.js';
 import ScrollTabs from '../components/ScrollTabs.jsx';
@@ -10,12 +10,31 @@ import SaveTemplateModal from '../components/SaveTemplateModal.jsx';
 import DeleteTemplateModal from '../components/DeleteTemplateModal.jsx';
 import { segmentText } from '../segmentation.js';
 import { createWorkbookNewFile, downloadWorkbook } from '../utils/excelMapping';
-
+import { db, clearSubVals, putSubVals } from '../db/notesDB';
+import { useSubIdxFromBus } from '../utils/subIndexBus';
+import { liveQuery } from 'dexie';
+// Use "live" values only if the active tab belongs to the same subsection
+function isActiveTabForSection(activeTab, secIdx) {
+  try { return activeTab && Number(activeTab.secIdx) === Number(secIdx); } catch { return false; }
+}
 export default function Home() {
   // Router info (declare ONCE inside the component)
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  // remember last seen values payload to avoid redundant/foreign rehydrates
+  const lastValsJsonRef = useRef('');
+  useEffect(() => {
+    try { lastValsJsonRef.current = JSON.stringify(loadValues() || {}); } catch {}
+  }, []);
+
+  // --- anti-echo for local saves (cooldown + wrapper) ---
+  const SAVE_ECHO_COOLDOWN_MS = 2500;
+  const lastLocalSaveTs = useRef(0);
+  const saveValuesLocal = (...args) => { lastLocalSaveTs.current = Date.now(); return saveValuesCore(...args); 
+  try { lastValsJsonRef.current = JSON.stringify(loadValues() || {}); } catch {}
+};
+
   // ===== Export modes (CSV / JSON) =====
   // CSV
   const [csvMode, setCsvMode] = useState(() => { try { return localStorage.getItem('tcf_csv_mode') === '1'; } catch { return false; } });
@@ -122,6 +141,34 @@ export default function Home() {
   const [tplToDelete, setTplToDelete] = useState(null);
 const [iface, setIface] = useState(null);
   const [valsMap, setValsMap] = useState(loadValues());
+  const [activeSubIdx] = useSubIdxFromBus(0);
+
+  // === Dexie subValues live map: ifaceId -> (secIdx -> [rows]) ===
+  const [subRowsByIface, setSubRowsByIface] = useState(new Map());
+  useEffect(() => {
+    const obs = liveQuery(() => db.table('subValues').toArray());
+    const sub = obs.subscribe({
+      next: (rows) => {
+        try{
+          const byIface = new Map();
+          for (const r of rows) {
+            const iid = String(r.ifaceId);
+            const s = Number(r.secIdx);
+            const m = byIface.get(iid) || new Map();
+            const arr = m.get(s) || [];
+            arr.push(r);
+            m.set(s, arr);
+            byIface.set(iid, m);
+          }
+          byIface.forEach((m) => { m.forEach((arr, s) => arr.sort((a,b)=>Number(a.subIdx)-Number(b.subIdx))); });
+          setSubRowsByIface(byIface);
+        }catch(e){ console.warn('subValues map build failed', e); }
+      },
+      error: (e) => console.error('subValues liveQuery error', e),
+    });
+    return () => sub.unsubscribe();
+  }, []);
+
   const [values, setValues] = useState([]);
   const [activeSec, setActiveSec] = useState(0);
   const [colorPickerFor, setColorPicker] = useState(null);
@@ -271,7 +318,7 @@ const usedIds = useMemo(() => {
       if (idxs.length >= 3) next[idxs[2]] = ifCode  || '';
       if (idxs.length >= 4) next[idxs[3]] = secNum  || '';
       const map = { ...valsMap, [iface.id]: next };
-      setValsMap(map); saveValues(map);
+      setValsMap(map); saveValuesLocal(map);
       return next;
     });
   };
@@ -431,8 +478,23 @@ return () => clearTimeout(timer);
 
   const finalText = useMemo(() => {
   // Helper to get field indexes for a section
-  const idxsFor = (itf, sectionIx) => (itf.fieldSections || [])
-    .map((sec,i)=>sec===sectionIx?i:-1).filter(i=>i!==-1);
+  const idxsFor = (itf, sectionIx) => (itf.fieldSections || []).map((sec,i)=>sec===sectionIx?i:-1).filter(i=>i!==-1);
+  // Build fixed-width line for a section using interface lengths
+  const joinRow = (itf, sIx, rowVals) => {
+    try {
+      const idxs = idxsFor(itf, sIx);
+      const padded = (rowVals || []).map((v, k) => {
+        const fieldIdx = idxs[k];
+        const len = Math.max(1, getLenFor(itf, fieldIdx) || 10);
+        const s = String(v ?? '');
+        return s.length >= len ? s.slice(0, len) : (s + ' '.repeat(len - s.length));
+      });
+      return padded.join('');
+    } catch (e) {
+      console.warn('joinRow fallback used', e);
+      return (rowVals || []).join('');
+    }
+  };
 
   let seq = 1; // Global sequence counter (start from 1)
 
@@ -440,81 +502,30 @@ return () => clearTimeout(timer);
     const included = (Array.isArray(itf.includedSections) && itf.includedSections.length === itf.sections.length)
       ? itf.includedSections
       : (itf.sections || []).map(() => false);
-
     const lines = [];
-    // Prefer generated tabs (bottom subsections). If present, build from them.
-    try {
-      const gen = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || [];
-      if (Array.isArray(gen) && gen.length > 0) {
-        const linesFromTabs = [];
-        let activeId = null; try { activeId = localStorage.getItem('tcf_genTabs_active_' + String(itf.id)) || null; } catch (e) {}
-        for (const tab of gen) {
-          const sIx = tab.secIdx;
-          const idxs = idxsFor(itf, sIx);
-          if (!idxs.length) continue;
-          // choose source values
-          const snap = Array.isArray(tab.snapshot) ? tab.snapshot : vals;
-          let rowVals;
-          if (tab.id && activeId && tab.id === activeId) {
-            // active tab uses live values so textarea updates while typing
-            rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
-          } else if (snap && typeof snap[0] === 'object' && snap[0] && snap[0].i !== undefined) {
-            const map = new Map(snap.map(p => [p.i, p.v]));
-            rowVals = idxs.map(i => String((map.has(i) ? map.get(i) : (vals[i] ?? ''))).trim());
-          } else {
-            rowVals = idxs.map(i => String((snap[i] ?? '')).trim());
-}
-          // if all fields empty, skip this line even if included
-          if (!rowVals.some(v => v !== '')) continue;
-          // overwrite Sequence if field exists in this section
-          const seqIdx = findSeqIndex(itf, sIx);
-          if (seqIdx != null) {
-            const posInRow = idxs.indexOf(seqIdx);
-            if (posInRow !== -1) {
-              const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
-              const seqStr = String(seq).padStart(fieldLen, '0').slice(-fieldLen);
-              rowVals[posInRow] = seqStr;
-            }
-          }
-          const padded = rowVals.map((v, k) => padToLen(v, getLenFor(itf, idxs[k])));
-          linesFromTabs.push(padded.join(''));
-          seq += 1;
-        }
-        return linesFromTabs;
-      }
-    } catch (e) {}
-
-    for (let sIx = 0; sIx < (itf.sections?.length || 0); sIx++) {
-      if (!included[sIx]) {
-        const idxsProbe = (itf.fieldSections || []).map((sec,i)=>sec===sIx?i:-1).filter(i=>i!==-1);
-        const hasData = idxsProbe.some(i => String((vals[i] ?? '')).trim() !== '');
-        if (!hasData) continue;
-      }
+    for (let sIx = 1; sIx < (itf.sections?.length || 1); sIx++) {
+      if (!included[sIx]) continue;
       const idxs = idxsFor(itf, sIx);
       if (!idxs.length) continue;
-
-      // raw row values
-      const row = idxs.map(i => String((vals[i] ?? '')).trim());
-      // if nothing filled, skip row to avoid 'sequence only' line
-      if (!row.some(v => v !== '')) continue;
-
-      // overwrite Sequence in this row
-      const seqIdx = findSeqIndex(itf, sIx);
-      if (seqIdx != null) {
-        const posInRow = idxs.indexOf(seqIdx);
-        if (posInRow !== -1) {
-          const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
-          const seqStr = String(seq).padStart(fieldLen, '0').slice(-fieldLen);
-          row[posInRow] = seqStr;
+      // Pull rows from Dexie (subValues) for this iface + section
+      const rows = (subRowsByIface.get(String(itf.id))?.get(Number(sIx)) || []);
+      for (const rec of rows) {
+        const snap = Array.isArray(rec?.vals) ? rec.vals : vals;
+        const rowVals = idxs.map(i => String((snap[i] ?? '')).trim());
+        // if all fields empty, skip this line even if included
+        if (!rowVals.some(v => v !== '')) continue;
+        // Sequence No. handling (if present in this section)
+        const seqIdx = findSeqIndex(itf, sIx);
+        if (seqIdx != null) {
+          const posInRow = idxs.indexOf(seqIdx);
+          if (posInRow !== -1) {
+            const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
+            const seqStr = String(lines.length + 1).padStart(fieldLen, '0').slice(-fieldLen);
+            rowVals[posInRow] = seqStr;
+          }
         }
-}
-
-      // padding per field using existing helpers
-      const padded = row.map((v, k) => padToLen(v, getLenFor(itf, idxs[k])));
-      lines.push(padded.join(''));
-
-      // increment global sequence after pushing line
-      seq += 1;
+        lines.push(joinRow(itf, sIx, rowVals));
+      }
     }
     return lines;
   };
@@ -548,14 +559,13 @@ return () => clearTimeout(timer);
     const rows = [];
     let gseq = 1;
     const emitRowsFor = (itf, vals) => {
-      const gen = (function(){ try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || []; } catch { return []; } })();
-      if (Array.isArray(gen) && gen.length > 0) {
-        for (const tab of gen) {
-          const sIx = tab.secIdx;
-          const idxs = idxsFor(itf, sIx);
-          if (!idxs.length) continue;
-          const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
-          const rowVals = idxs.map(i => String((snapMap.has(i) ? snapMap.get(i) : (vals[i] ?? ''))).trim());
+      const genRows = (subRowsByIface.get(String(itf.id)) || new Map());
+      for (const [sIx, rows] of genRows.entries()) {
+        const idxs = idxsFor(itf, sIx);
+        if (!idxs.length) continue;
+        for (const rec of (rows || [])) {
+          const snap = Array.isArray(rec?.vals) ? rec.vals : vals;
+          const rowVals = idxs.map(i => String((snap[i] ?? '')).trim());
           const seqIdx = findSeqIndex(itf, sIx);
           if (seqIdx != null) {
             const posInRow = idxs.indexOf(seqIdx);
@@ -567,49 +577,13 @@ return () => clearTimeout(timer);
             }
           }
           const obj = {};
-idxs.forEach((i, k) => {
-  const label = String((itf.labels || [])[i] || `f${i}`);
-  const v = rowVals[k];
-  if (!skipEmpty || String(v).trim() !== '') obj[label] = v;
-});
-// push only if there is at least one key
-if (Object.keys(obj).length) rows.push(obj);
-
+          idxs.forEach((i, k) => {
+            const label = String((itf.labels || [])[i] || `f${i}`);
+            const v = rowVals[k];
+            if (!skipEmpty || String(v).trim() !== '') obj[label] = v;
+          });
+          if (Object.keys(obj).length) rows.push(obj);
         }
-        return;
-      }
-      // fallback to legacy includedSections
-      const included = (Array.isArray(itf.includedSections) && itf.includedSections.length === itf.sections.length)
-        ? itf.includedSections
-        : (itf.sections || []).map(() => false);
-      for (let sIx = 0; sIx < (itf.sections?.length || 0); sIx++) {
-        if (!included[sIx]) {
-          const idxsProbe = (itf.fieldSections || []).map((sec,i)=>sec===sIx?i:-1).filter(i=>i!==-1);
-          const hasData = idxsProbe.some(i => String((vals[i] ?? '')).trim() !== '');
-          if (!hasData) continue;
-        }
-        const idxs = idxsFor(itf, sIx);
-        if (!idxs.length) continue;
-        const rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
-        const seqIdx = findSeqIndex(itf, sIx);
-        if (seqIdx != null) {
-          const posInRow = idxs.indexOf(seqIdx);
-          if (posInRow !== -1) {
-            const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
-            const seqStr = String(gseq).padStart(fieldLen, '0').slice(-fieldLen);
-            rowVals[posInRow] = seqStr;
-            gseq++;
-          }
-        }
-        const obj = {};
-idxs.forEach((i, k) => {
-  const label = String((itf.labels || [])[i] || `f${i}`);
-  const v = rowVals[k];
-  if (!skipEmpty || String(v).trim() !== '') obj[label] = v;
-});
-// push only if there is at least one key
-if (Object.keys(obj).length) rows.push(obj);
-
       }
     };
     if (combineAll) {
@@ -648,14 +622,13 @@ if (Object.keys(obj).length) rows.push(obj);
       return esc(String(row ?? ''));
     };
     const emitRowsFor = (itf, vals) => {
-      const gen = (function(){ try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || []; } catch { return []; } })();
-      if (Array.isArray(gen) && gen.length > 0) {
-        for (const tab of gen) {
-          const sIx = tab.secIdx;
-          const idxs = idxsFor(itf, sIx);
-          if (!idxs.length) continue;
-          const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
-          const rowVals = idxs.map(i => String((snapMap.has(i) ? snapMap.get(i) : (vals[i] ?? ''))).trim());
+      const genRows = (subRowsByIface.get(String(itf.id)) || new Map());
+      for (const [sIx, rows] of genRows.entries()) {
+        const idxs = idxsFor(itf, sIx);
+        if (!idxs.length) continue;
+        for (const rec of (rows || [])) {
+          const snap = Array.isArray(rec?.vals) ? rec.vals : vals;
+          const rowVals = idxs.map(i => String((snap[i] ?? '')).trim());
           const seqIdx = findSeqIndex(itf, sIx);
           if (seqIdx != null) {
             const posInRow = idxs.indexOf(seqIdx);
@@ -667,47 +640,13 @@ if (Object.keys(obj).length) rows.push(obj);
             }
           }
           const obj = {};
-idxs.forEach((i, k) => {
-  const label = String((itf.labels || [])[i] || `f${i}`);
-  const v = rowVals[k];
-  if (!skipEmpty || String(v).trim() !== '') obj[label] = v;
-});
-// push only if there is at least one key
-if (Object.keys(obj).length) rows.push(obj);
-        if (!header) header = Object.keys(obj);
-
+          idxs.forEach((i, k) => {
+            const label = String((itf.labels || [])[i] || `f${i}`);
+            const v = rowVals[k];
+            if (!skipEmpty || String(v).trim() !== '') obj[label] = v;
+          });
+          if (Object.keys(obj).length) rows.push(obj);
         }
-        return;
-      }
-      // fallback to legacy includedSections
-      const included = (Array.isArray(itf.includedSections) && itf.includedSections.length === itf.sections.length)
-        ? itf.includedSections
-        : (itf.sections || []).map(() => false);
-      for (let sIx = 0; sIx < (itf.sections?.length || 0); sIx++) {
-        if (!included[sIx]) continue;
-        const idxs = idxsFor(itf, sIx);
-        if (!idxs.length) continue;
-        const rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
-        const seqIdx = findSeqIndex(itf, sIx);
-        if (seqIdx != null) {
-          const posInRow = idxs.indexOf(seqIdx);
-          if (posInRow !== -1) {
-            const fieldLen = Math.max(1, getLenFor(itf, seqIdx) || 7);
-            const seqStr = String(gseq).padStart(fieldLen, '0').slice(-fieldLen);
-            rowVals[posInRow] = seqStr;
-            gseq++;
-          }
-        }
-        const obj = {};
-idxs.forEach((i, k) => {
-  const label = String((itf.labels || [])[i] || `f${i}`);
-  const v = rowVals[k];
-  if (!skipEmpty || String(v).trim() !== '') obj[label] = v;
-});
-// push only if there is at least one key
-if (Object.keys(obj).length) rows.push(obj);
-        if (!header) header = Object.keys(obj);
-
       }
     };
     if (combineAll) {
@@ -748,7 +687,7 @@ return out.join('\n');
     if (!isFlex(i)) nextVal = nextVal.slice(0, max);
     setValues(curr => {
       const next = curr.slice(); next[i] = nextVal;
-      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValues(map);
+      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValuesLocal(map);
       return next;
     });
   };
@@ -758,14 +697,14 @@ return out.join('\n');
     if (isFlex(i)) {
     setValues(curr => {
       const next = curr.slice();
-      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValues(map);
+      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValuesLocal(map);
       return next;
     });
     return;
   }
   setValues(curr => {
       const next = curr.slice(); next[i] = padToLen(next[i] ?? '', max);
-      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValues(map);
+      const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValuesLocal(map);
       return next;
     });
   };
@@ -868,7 +807,10 @@ const clearForm = (force = false) => {
   setValues(empties);
   const map = { ...valsMap, [iface.id]: empties };
   setValsMap(map);
-  saveValues(map); // fires tcf-values-changed
+  saveValuesLocal(map);
+  // Also delete all subValues rows for this iface in Dexie
+  (async () => { try { await db.table('subValues').where({ ifaceId: String(iface.id) }).delete(); } catch (e) { console.warn('Dexie clearForm delete failed', e); } })();
+// fires tcf-values-changed
 
   // 1b) Reset segmentation UI so textarea switches back to finalText (no leftover 'sekwencja')
   try { setSegmentTextStr(''); setSegmentMode(false); } catch (e) {}
@@ -967,7 +909,7 @@ const clearForm = (force = false) => {
 
       // Update values
       setValsMap(nextVals);
-      saveValues(nextVals);
+      saveValuesLocal(nextVals);
 
       // Recompute usage for Introduction badges
       
@@ -1067,34 +1009,18 @@ const clearSection = (force = false, overrideSec = null) => {
     const idxs = iface.fieldSections.map((s, i) => s === targetSec ? i : -1).filter(i => i !== -1);
     idxs.forEach(i => { arr[i] = ''; });
     setValues(arr);
-    const map = { ...valsMap, [iface.id]: arr }; setValsMap(map); saveValues(map);
+    const map = { ...valsMap, [iface.id]: arr }; setValsMap(map); saveValuesLocal(map);
 
-    // Also remove generated subsections (tabs) for this section
-    try {
-      const k = 'tcf_genTabs_' + String(iface.id);
-      const raw = localStorage.getItem(k);
-      const arrTabs = JSON.parse(raw || '[]') || [];
-      const rest = Array.isArray(arrTabs) ? arrTabs.filter(t => Number(t?.secIdx) !== Number(targetSec)) : [];
-      localStorage.setItem(k, JSON.stringify(rest));
-      try { localStorage.removeItem('tcf_genTabs_active_' + String(iface.id)); } catch (e) {}
-      try { bumpGenTabs(); } catch (e) {}
-    } catch (e) { console.warn('clearSection: tabs wipe failed', e); }
-
-    // Recompute section usage counters for badges
-    try {
-      const tabsById = new Map();
-      for (const it of (cfg?.interfaces || [])) {
-        try {
-          const raw = localStorage.getItem('tcf_genTabs_' + String(it.id));
-          const arr = JSON.parse(raw || '[]') || [];
-          tabsById.set(it.id, arr);
-        } catch (e) {}
-      }
-      const nextVals = { ...valsMap, [iface.id]: arr };
-      applySectionUsage(nextVals, tabsById);
-    } catch (e) {}
-
-    // Reset color & inclusion flag for this section
+    // Also remove generated subsections (tabs) for this section in Dexie
+try {
+  const ifaceId = String(iface.id);
+  const sIx = Number(targetSec);
+  db.table('subValues')
+    .where({ ifaceId, secIdx: sIx })
+    .delete()
+    .catch(e => console.warn('Dexie clearSection delete failed', e));
+} catch (e) { console.warn('Dexie clearSection delete failed', e); }
+// Reset color & inclusion flag for this section
     try{
       const it = iface;
       const total = it.sections?.length || 0;
@@ -1125,7 +1051,22 @@ const clearSection = (force = false, overrideSec = null) => {
   const syncingRef = useRef(false);
 
   useEffect(() => {
-    const syncFromEvents = () => {
+    const syncFromEvents = (e) => {
+      
+    // filtered syncFromEvents
+// React only to our keys and only when values actually changed
+    try {
+      const k = (e && e.key) ? String(e.key) : '';
+      if (k && k.startsWith('tcf_config_') && k.endsWith('_bump')) return; // ignore CMP bumps
+      if (k && k !== KEY_VALS && !k.startsWith('tcf_genTabs_')) return;    // ignore foreign keys
+    } catch {}
+    try {
+      const now = localStorage.getItem(KEY_VALS) || '';
+      if (now === (lastValsJsonRef.current || '')) return;
+      lastValsJsonRef.current = now;
+    } catch {}
+try { if (e && e.key && e.key.startsWith('tcf_config_') && e.key.endsWith('_bump')) return; } catch {}
+    if (Date.now() - (lastLocalSaveTs.current || 0) < SAVE_ECHO_COOLDOWN_MS) return;
       if (syncingRef.current) return;
       syncingRef.current = true;
       try {
@@ -1226,7 +1167,7 @@ const clearSection = (force = false, overrideSec = null) => {
         try { localStorage.removeItem('tcf_genTabs_active_' + String(it.id)); } catch (e) {}
       }
       setValsMap(nextVals);
-      saveValues(nextVals);
+      saveValuesLocal(nextVals);
       // reset overlays
       const newCfg = {
         ...cfg,
@@ -1384,9 +1325,9 @@ if (!iface) return null;
               <div className="secHeader" style={{margin:'8px 0 6px 0', fontWeight:600}}>
                 {(iface.sectionNumbers?.[activeSec] || String(activeSec*10).padStart(3,'0'))} · {iface.sections[activeSec]}
               </div>
-              <div className="grid">
+              <div className="grid" key={`grid-${iface?.id||"iface"}-${activeSec}` }>
                 {orderedInSec.map((fi, k) => (
-                  <React.Fragment key={fi}>
+                  <React.Fragment key={`${activeSec}-${fi}`}>
                     {(k>0 && isDef(orderedInSec[k-1]) && !isDef(fi)) && <div className="sep" style={{gridColumn:'1 / -1'}}></div>}
                     {Array.isArray(iface.separators) && iface.separators.includes(fi) && <div className="sep" style={{gridColumn:'1 / -1'}}></div>}
                     <FragmentRow label={<LabelBlock label={iface.labels[fi]} len={getLen(fi)} desc={iface.descriptions[fi]} req={!!iface.required[fi]} flex={isFlex(fi)} />}>

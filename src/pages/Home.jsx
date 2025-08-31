@@ -11,15 +11,28 @@ import DeleteTemplateModal from '../components/DeleteTemplateModal.jsx';
 import { segmentText } from '../segmentation.js';
 import { createWorkbookNewFile, downloadWorkbook } from '../utils/excelMapping';
 
+
+// Use "live" values only if the active tab belongs to the same subsection
+function isActiveTabForSection(activeTab, secIdx) {
+  try { return activeTab && Number(activeTab.secIdx) === Number(secIdx); } catch { return false; }
+}
 export default function Home() {
   // Router info (declare ONCE inside the component)
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  // remember last seen values payload to avoid redundant/foreign rehydrates
+  const lastValsJsonRef = useRef('');
+  useEffect(() => {
+    try { lastValsJsonRef.current = localStorage.getItem(KEY_VALS) || ''; } catch {}
+  }, []);
+
   // --- anti-echo for local saves (cooldown + wrapper) ---
   const SAVE_ECHO_COOLDOWN_MS = 2500;
   const lastLocalSaveTs = useRef(0);
-  const saveValuesLocal = (...args) => { lastLocalSaveTs.current = Date.now(); return saveValuesCore(...args); };
+  const saveValuesLocal = (...args) => { lastLocalSaveTs.current = Date.now(); return saveValuesCore(...args); 
+  try { lastValsJsonRef.current = localStorage.getItem(KEY_VALS) || ''; } catch {}
+};
 
   // ===== Export modes (CSV / JSON) =====
   // CSV
@@ -129,6 +142,11 @@ const [iface, setIface] = useState(null);
   const [valsMap, setValsMap] = useState(loadValues());
   const [values, setValues] = useState([]);
   const [activeSec, setActiveSec] = useState(0);
+// --- guard: block rehydrate for a short period after switching sections/tabs
+const secSwitchTsRef = useRef(0);
+const SEC_SWITCH_BLOCK_MS = 1500;
+const setActiveSecSafe = useCallback((ix) => { secSwitchTsRef.current = Date.now(); setActiveSec(ix); }, []);
+
   const [colorPickerFor, setColorPicker] = useState(null);
   const [colorDraft, setColorDraft] = useState('#ffffff');
 
@@ -460,7 +478,7 @@ return () => clearTimeout(timer);
           // choose source values
           const snap = Array.isArray(tab.snapshot) ? tab.snapshot : vals;
           let rowVals;
-          if (tab.id && activeId && tab.id === activeId) {
+          if (!combineAll && tab.id && activeId && tab.id === activeId && Number(tab.secIdx) === Number(secIdx)) {
             // active tab uses live values so textarea updates while typing
             rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
           } else if (snap && typeof snap[0] === 'object' && snap[0] && snap[0].i !== undefined) {
@@ -1130,8 +1148,26 @@ const clearSection = (force = false, overrideSec = null) => {
   const syncingRef = useRef(false);
 
   useEffect(() => {
-    const syncFromEvents = () => {
-      if (Date.now() - (lastLocalSaveTs.current || 0) < SAVE_ECHO_COOLDOWN_MS) return;
+    const syncFromEvents = (e) => {
+      
+    
+    // block rehydrate immediately after switching section/tab
+    try { const k = (e && e.key) ? String(e.key) : ''; if (k && k.startsWith('tcf_genTabs_')) return; } catch {}
+    try { if (Date.now() - (secSwitchTsRef.current || 0) < SEC_SWITCH_BLOCK_MS) return; } catch {}
+// filtered syncFromEvents
+// React only to our keys and only when values actually changed
+    try {
+      const k = (e && e.key) ? String(e.key) : '';
+      if (k && k.startsWith('tcf_config_') && k.endsWith('_bump')) return; // ignore CMP bumps
+      if (k && k !== KEY_VALS && !k.startsWith('tcf_genTabs_')) return;    // ignore foreign keys
+    } catch {}
+    try {
+      const now = localStorage.getItem(KEY_VALS) || '';
+      if (now === (lastValsJsonRef.current || '')) return;
+      lastValsJsonRef.current = now;
+    } catch {}
+try { if (e && e.key && e.key.startsWith('tcf_config_') && e.key.endsWith('_bump')) return; } catch {}
+    if (Date.now() - (lastLocalSaveTs.current || 0) < SAVE_ECHO_COOLDOWN_MS) return;
       if (syncingRef.current) return;
       syncingRef.current = true;
       try {
@@ -1314,7 +1350,7 @@ if (!iface) return null;
               key={idx}
               className={`tab-admin ${idx===activeSec?'active':''}`}
               style={{ backgroundColor: iface.sectionColors?.[idx] || undefined }}
-              onClick={() => setActiveSec(idx)}
+              onClick={() => setActiveSecSafe(idx)}
             >
               {idx===0 ? 'Introduction' : ((((iface.sections[idx]||'').match(/\b(\d{3})\b/)||[])[1] || iface.sectionNumbers?.[idx] || String(idx*10).padStart(3,'0')))}
             </button>
@@ -1341,7 +1377,7 @@ if (!iface) return null;
                       <td
                         className="clickCell"
                         style={{ backgroundColor: iface.sectionColors?.[ix] || 'transparent' }}
-                        onClick={() => setActiveSec(ix)}
+                        onClick={() => setActiveSecSafe(ix)}
                         title={t('desc')}
                       >
                         {nm}
@@ -1390,9 +1426,9 @@ if (!iface) return null;
               <div className="secHeader" style={{margin:'8px 0 6px 0', fontWeight:600}}>
                 {(iface.sectionNumbers?.[activeSec] || String(activeSec*10).padStart(3,'0'))} · {iface.sections[activeSec]}
               </div>
-              <div className="grid">
+              <div className="grid" key={`grid-${iface?.id||"iface"}-${activeSec}` }>
                 {orderedInSec.map((fi, k) => (
-                  <React.Fragment key={fi}>
+                  <React.Fragment key={`${activeSec}-${fi}`}>
                     {(k>0 && isDef(orderedInSec[k-1]) && !isDef(fi)) && <div className="sep" style={{gridColumn:'1 / -1'}}></div>}
                     {Array.isArray(iface.separators) && iface.separators.includes(fi) && <div className="sep" style={{gridColumn:'1 / -1'}}></div>}
                     <FragmentRow label={<LabelBlock label={iface.labels[fi]} len={getLen(fi)} desc={iface.descriptions[fi]} req={!!iface.required[fi]} flex={isFlex(fi)} />}>
@@ -1417,7 +1453,7 @@ if (!iface) return null;
   valsMap={valsMap}
   setValues={setValues}
   setValsMap={setValsMap}
-  onSwitchSection={setActiveSec}
+  onSwitchSection={setActiveSecSafe}
   onChange={bumpGenTabs}
 >
   {({ onGenerate }) => (
