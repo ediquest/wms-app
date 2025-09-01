@@ -299,9 +299,22 @@ body.notes-panning .notes-canvas{ cursor: grabbing; user-select:none; }
 
 
 /* Layout guard so canvas really fills the panel */
-.notes-dock{ display:flex; flex-direction:column; height: var(--dock-height, 60vh); width: var(--dock-width, 60vw); min-height:0; }
+.notes-dock{ display:flex; flex-direction:column; height:100%; min-height:0; }
 .notes-body{ position:relative; flex:1 1 auto; min-height:0; }
 .notes-canvas{ position:absolute; inset:0; width:100%; height:100%; overflow:hidden; cursor:grab; overscroll-behavior:contain; touch-action:none; }
 .canvas-viewport{ position:absolute; inset:0; pointer-events:auto; }
 .canvas-content{ transform-origin:0 0; will-change:transform; pointer-events:auto; }
 body.notes-panning .notes-canvas{ cursor:grabbing; user-select:none; }
+
+/* === Canvas height tied to dock height === */
+.notes-dock{ height: var(--notes-h); }
+.notes-topbar{ height: var(--notes-topbar-h, 44px); flex: 0 0 var(--notes-topbar-h, 44px); }
+.notes-canvas{ height: calc(var(--notes-h) - var(--notes-topbar-h, 44px)); flex: 1 1 auto; min-height: 0; overflow: hidden; }
+
+/* === Topbar restore & canvas positioning override === */
+:where(.notes-dock){ display:block; height: var(--dock-height, 60vh); min-height:0; }
+:where(.notes-dock) .notes-topbar{ height: 44px; line-height:44px; }
+:where(.notes-dock) .notes-canvas{
+  position:absolute; top:44px; left:0; right:0; bottom:0;
+  height:auto; min-height:0; overflow:hidden;
+}

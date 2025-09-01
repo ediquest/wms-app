@@ -12,54 +12,6 @@ import ScrollTabs from './ScrollTabs.jsx';
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-
-function NoteItemInner({ el, onBringToFront, onDragStart, onResizeStart, onChangeText, onDelete }) {
-  const [val, setVal] = React.useState(el?.content || '');
-  const saveTimerRef = React.useRef(null);
-
-  React.useEffect(() => {
-    setVal(el?.content || '');
-  }, [el?.id, el?.content]);
-
-  const onHeaderMouseDown = (e) => {
-    e.stopPropagation();
-    onBringToFront?.(el.id);
-    onDragStart?.(el.id, e.clientX, e.clientY);
-  };
-
-  const onContainerMouseDown = () => onBringToFront?.(el.id);
-
-  const onChange = (e) => {
-    const v = e.target.value;
-    setVal(v);
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => { onChangeText?.(el.id, v); }, 300);
-  };
-
-  return (
-    <div
-      className="note-item"
-      style={{ left: el.x, top: el.y, width: el.width, height: el.height }}
-      onMouseDown={onContainerMouseDown}
-    >
-      <div className="note-header" onMouseDown={onHeaderMouseDown}>
-        <div className="note-title">{t('notes.card')}</div>
-        <button className="note-close" onClick={(e)=>{ e.stopPropagation(); onDelete?.(el.id); }}>×</button>
-      </div>
-
-      <div className="note-body">
-        <textarea className="note-textarea" value={val} onChange={onChange} />
-      </div>
-
-      <div className="note-resize-e" onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart?.(el.id, e.clientX, e.clientY, 'e'); }} />
-      <div className="note-resize-s" onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart?.(el.id, e.clientX, e.clientY, 's'); }} />
-      <div className="note-resize-se" onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart?.(el.id, e.clientX, e.clientY, 'se'); }} />
-    </div>
-  );
-}
-const NoteItem = React.memo(NoteItemInner, (prev, next) => prev.el === next.el);
-
-
 export default function NotesDock() {
   const [ready, setReady] = useState(false);
   const [ui, setUi] = useState({ open: false, widthPct: 0.6, heightPct: 0.6, handleOffset: 0 });
@@ -82,8 +34,8 @@ const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 
 
   // Close when clicking outside
   useEffect(() => {
-    if (!ui.open) return;
     const onDown = (e) => {
+      if (!ui.open) return;
       const panel = panelRef.current;
       if (!panel) return;
       if (!panel.contains(e.target) && !e.target.closest?.('.notes-handle')) {
@@ -91,11 +43,11 @@ const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 
       }
     };
     document.addEventListener('mousedown', onDown, true);
-    return () => document.removeEventListener('mousedown', onDown, true);
   }, [ui.open]);
 
 // --- Pan (drag background) ---
   const onCanvasDown = (e) => {
+    try{const ae=document.activeElement;if(ae&&ae.tagName==='TEXTAREA'){ae.blur();}}catch{};
     if (e.button !== 0) return;
     if (e.target.closest('textarea, input, button, [contenteditable="true"], .notes-card, .note-item')) return; // ignore interactive/note elements
     panRef.current.panning = true;
@@ -112,7 +64,7 @@ const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 
     if (!panRef.current.panning) return;
     const dx = e.clientX - panRef.current.startX;
     const dy = e.clientY - panRef.current.startY;
-    setView(v => ({ ...v, x: Math.min(0, panRef.current.startVX + dx), y: Math.min(0, panRef.current.startVY + dy) }));
+    setView(v => ({ ...v, x: panRef.current.startVX + dx, y: panRef.current.startVY + dy }));
   };
   const onCanvasUp = () => {
     panRef.current.panning = false;
@@ -130,11 +82,11 @@ const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 
     const rect = el.getBoundingClientRect();
     const cx = (e.clientX - rect.left - view.x) / view.scale;
     const cy = (e.clientY - rect.top  - view.y) / view.scale;
-    const factor = Math.exp(-e.deltaY * 0.0010);
+    const factor = Math.exp(-e.deltaY * 0.0015);
     const nextScale = clamp(view.scale * factor, 0.3, 3);
     const nx = e.clientX - rect.left - cx * nextScale;
     const ny = e.clientY - rect.top  - cy * nextScale;
-    setView(v => ({ ...v, scale: nextScale, x: Math.min(0, nx), y: Math.min(0, ny) }));
+    setView(v => ({ ...v, scale: nextScale, x: nx, y: ny }));
   };
 
   // Persist/restore view
@@ -181,7 +133,7 @@ const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 
     (async () => {
       await initNotesDB();
       const uiState = await getUI();
-      setUi({ open: false, widthPct: uiState?.widthPct ?? 0.6, heightPct: uiState?.heightPct ?? 0.6, handleOffset: uiState?.handleOffset ?? 0 });
+      setUi({ open: false, widthPct: uiState?.widthPct ?? 0.6, heightPct: uiState?.heightPct ?? 0.8, handleOffset: uiState?.handleOffset ?? 0 });
       const tb = await listTabs();
       setTabs(tb);
       const aId = (await getActiveTabId()) || (tb[0]?.id ?? null);
@@ -200,25 +152,26 @@ const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 
     const maxY = Math.max(...els.map(e => e.y + (e.h || 120)));
     const cw = canvasRef.current.clientWidth || 1;
     const ch = canvasRef.current.clientHeight || 1;
-    const pad = 16;
+    const pad = 24;
     const contentW = Math.max(1, (maxX - minX) + pad*2);
     const contentH = Math.max(1, (maxY - minY) + pad*2);
-    const s = Math.min(0.95, Math.max(0.6, Math.min(cw / contentW, ch / contentH)));
-    const nx = -minX * s + pad;
-    const ny = -minY * s + pad;
-    setView({ x: Math.min(0, nx), y: Math.min(0, ny), scale: s });
+    const FIT_MULTIPLIER = 0.75; // 85% ciasnego dopasowania
+const tight = Math.min(cw / contentW, ch / contentH);
+const s = Math.min(3, Math.max(0.3, tight * FIT_MULTIPLIER));
+    const nx = Math.round((cw - (minX* s) - (contentW - pad*2) * s)/2);
+    const ny = Math.round((ch - (minY* s) - (contentH - pad*2) * s)/2);
+    setView({ x: nx, y: ny, scale: s });
   };
   const resetView = () => setView({ x: 0, y: 0, scale: 1 });
   
-  // Capture wheel on canvas (non-passive + capture) to stop page scroll
+  // Capture wheel on canvas (non-passive) to stop page scroll
   useEffect(() => {
-    if (!ui.open) return;
     const el = canvasRef.current;
     if (!el) return;
     const wheel = (e) => { e.preventDefault(); onCanvasWheel(e); };
-    el.addEventListener('wheel', wheel, { passive: false, capture: true });
-    return () => el.removeEventListener('wheel', wheel, { capture: true });
-  }, [ui.open, onCanvasWheel]);
+    el.addEventListener('wheel', wheel, { passive: false });
+    return () => el.removeEventListener('wheel', wheel);
+  }, [onCanvasWheel]);
 useEffect(() => {
     window.notesFitView = () => fitToContent(elements);
     window.notesResetView = resetView;
@@ -244,17 +197,7 @@ useEffect(() => {
 
   // Apply CSS vars + persist UI
 
-  
-  // Refit when opening if zoom looks off
-  useEffect(() => {
-    if (!ui.open) return;
-    if (!canvasRef.current) return;
-    if (!elements || elements.length === 0) return;
-    if (view.scale > 1.6 || view.scale < 0.45) {
-      fitToContent(elements);
-    }
-  }, [ui.open]);
-// Recompute handle top to stick to dock center when open
+  // Recompute handle top to stick to dock center when open
   useEffect(() => {
     if (!ui.open) return;
     const recalc = () => {
@@ -466,7 +409,10 @@ const cw = (canvasRef.current?.clientWidth||0)/(view.scale||1);
     document.addEventListener('mouseup', mu);
   };
 
-  const onChangeText = async (id, value) => { try { await saveTextContent(id, value); } catch {} };
+  const onChangeText = async (id, value) => {
+    setElements(prev => prev.map(x => x.id === id ? { ...x, content: value } : x));
+    await saveTextContent(id, value);
+  };
 
   const onDeleteElement = async (id) => {
     await deleteElement(id);
@@ -545,7 +491,6 @@ if (!ready) return null;
 
 
   
-  
   return (
     <>
       <div
@@ -557,10 +502,9 @@ if (!ready) return null;
         <span className="label">{t('notes.title','Notes')}</span>
       </div>
 
-      <div ref={setDockAndPanelRef} className={`notes-dock ${ui.open ? 'open':''}`}>
-        <div className="dock-resize-n" />
-        <div className="dock-resize-w" />
-
+      <div ref={setDockAndPanelRef} className={`notes-dock ${ui.open ? 'open':''}`} style={{ "--notes-h": `${Math.round((ui.heightPct ?? 0.66) * window.innerHeight)}px`, "--notes-topbar-h": "44px" }}>
+          <div className="dock-resize-n" />
+          <div className="dock-resize-w" />
         <div className="notes-topbar">
           <ScrollTabs height={38}>
             {tabs.map(tab => (
@@ -582,45 +526,42 @@ if (!ready) return null;
           </ScrollTabs>
 
           <div className="notes-actions">
-            <button className="notes-iconbtn" onClick={()=>alert(t('notes.hintShort','Podwójnie kliknij siatkę, aby dodać notatkę. Wklej obrazek Ctrl+V.'))}>ℹ</button>
+            <button className="notes-iconbtn" onClick={()=>alert(t('notes.tip','Podwójnie kliknij w siatkę, aby dodać notatkę. Wklej obrazek Ctrl+V.'))}>ℹ</button>
           </div>
         </div>
 
-        {ui.open && (
-          <div className="notes-body">
-            <div
-              className="notes-canvas"
-              ref={canvasRef}
-              onMouseDownCapture={onCanvasDown}
-              onWheelCapture={onCanvasWheel}
-              onDoubleClick={onCanvasDoubleClick}
-              onPaste={handlePaste}
-              onDrop={handleDrop}
-              onDragOver={(e)=>e.preventDefault()}
-            >
-              <div className="canvas-viewport">
-                <div className="canvas-content" style={{ transform: `translate(${view.x}px, ${view.y}px) scale(${view.scale})`, transformOrigin: "0 0" }}>
-                  <div className="notes-tip">{t('notes.tip','Podwójnie kliknij, aby dodać notatkę. Przeciągaj, zmieniaj rozmiar. Wklej/upuść obrazek.')}</div>
+        <div
+          className="notes-canvas"
+          ref={canvasRef}
+          onMouseDownCapture={onCanvasDown}
+          onDoubleClick={onCanvasDoubleClick}
+          onPaste={handlePaste}
+          onDrop={handleDrop}
+          onDragOver={(e)=>e.preventDefault()}
+        >
+          <div className="canvas-viewport">
+            <div className="canvas-content" style={{ transform: 'translate(' + view.x + 'px, ' + view.y + 'px) scale(' + view.scale + ')', transformOrigin: '0 0' }}>
+              <div className="notes-tip">{t('notes.tip','Podwójnie kliknij, aby dodać notatkę. Przeciągaj, zmieniaj rozmiar. Wklej/upuść obrazek.')}</div>
 
-                  {elements.map(el => (
-                    <NoteItem
-                      key={el.id}
-                      el={el}
-                      onBringToFront={()=>bringToFront(el.id)}
-                      onDragStart={(sx,sy)=>startDrag(el.id, sx, sy)}
-                      onResizeStart={(sx,sy,dir)=>startResize(el.id, sx, sy, dir)}
-                      onChangeText={(val)=>onChangeText(el.id, val)}
-                      onDelete={()=>onDeleteElement(el.id)}
-                    />
-                  ))}
-                </div>
+          {elements.map(el => (
+            <NoteItem
+              key={el.id}
+              el={el}
+              onBringToFront={()=>bringToFront(el.id)}
+              onDragStart={(sx,sy)=>startDrag(el.id, sx, sy)}
+              onResizeStart={(sx,sy,dir)=>startResize(el.id, sx, sy, dir)}
+              onChangeText={(val)=>onChangeText(el.id, val)}
+              onDelete={()=>onDeleteElement(el.id)}
+            />
+          ))}
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      
     </>
   );
+}
 
 function TabPill({ active, name, onClick, onRename, onDelete }) {
   const [editing, setEditing] = useState(false);
@@ -733,4 +674,4 @@ function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText
       <div style={cornerStyle} onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart(e.clientX, e.clientY, 'se'); }} />
     </div>
   );
-}}
+}
