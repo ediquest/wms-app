@@ -128,7 +128,31 @@ const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 
     };
   }, []);
 
-  // Init DB + UI + tabs
+  
+  // Keep global HTML classes in sync with NotesDock open state
+  useEffect(() => {
+    const el = document.documentElement;
+    if (ui.open) {
+      el.classList.add('notes-open');
+      el.classList.remove('notes-closed');
+    } else {
+      el.classList.remove('notes-open');
+      el.classList.add('notes-closed');
+    }
+    return () => {
+      el.classList.remove('notes-open');
+      el.classList.remove('notes-closed');
+    };
+  }, [ui.open]);
+
+  // Allow other modules to force-close notes (e.g., after import success)
+  useEffect(() => {
+    const handler = () => setUi(u => ({ ...u, open: false }));
+    window.addEventListener('notes:safe-close', handler);
+    return () => window.removeEventListener('notes:safe-close', handler);
+  }, []);
+
+// Init DB + UI + tabs
   useEffect(() => {
     (async () => {
       await initNotesDB();
@@ -539,7 +563,7 @@ if (!ready) return null;
           onDrop={handleDrop}
           onDragOver={(e)=>e.preventDefault()}
         >
-          <div className="canvas-viewport">
+          <div className="canvas-viewport" style={{ pointerEvents: (ui.open ? "auto" : "none"), zIndex: (ui.open ? 0 : -1) }}>
             <div className="canvas-content" style={{ transform: 'translate(' + view.x + 'px, ' + view.y + 'px) scale(' + view.scale + ')', transformOrigin: '0 0' }}>
               <div className="notes-tip">{t('notes.tip','Podwójnie kliknij, aby dodać notatkę. Przeciągaj, zmieniaj rozmiar. Wklej/upuść obrazek.')}</div>
 

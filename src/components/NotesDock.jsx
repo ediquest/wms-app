@@ -9,8 +9,11 @@ import {
 } from '../db/notesDB.js';
 import { t } from '../i18n.js';
 import ScrollTabs from './ScrollTabs.jsx';
+import LightModal from './LightModal.jsx';
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+const MIN_SCALE = 0.3; const MAX_SCALE = 3;
+const clampPan = (p)=>({ x: Math.min((p?.x||0), 0), y: Math.min((p?.y||0), 0) });
 
 export default function NotesDock() {
   const [ready, setReady] = useState(false);
@@ -18,6 +21,9 @@ export default function NotesDock() {
   const [tabs, setTabs] = useState([]);
   const [activeTabId, setActiveId] = useState(null);
   const [elements, setElements] = useState([]);
+  const [confirmDel, setConfirmDel] = useState(null);
+  const [infoOpen, setInfoOpen] = useState(false);
+
 
   const dockRef = useRef(null);
   const canvasRef = useRef(null);
@@ -64,7 +70,7 @@ const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 
     if (!panRef.current.panning) return;
     const dx = e.clientX - panRef.current.startX;
     const dy = e.clientY - panRef.current.startY;
-    setView(v => ({ ...v, x: panRef.current.startVX + dx, y: panRef.current.startVY + dy }));
+    setView(v => { const nx = Math.min(panRef.current.startVX + dx, 0); const ny = Math.min(panRef.current.startVY + dy, 0); return ({ ...v, x: nx, y: ny }); });
   };
   const onCanvasUp = () => {
     panRef.current.panning = false;
@@ -83,32 +89,46 @@ const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 
     const cx = (e.clientX - rect.left - view.x) / view.scale;
     const cy = (e.clientY - rect.top  - view.y) / view.scale;
     const factor = Math.exp(-e.deltaY * 0.0015);
-    const nextScale = clamp(view.scale * factor, 0.3, 3);
+    const nextScale = clamp(view.scale * factor, MIN_SCALE, MAX_SCALE);
     const nx = e.clientX - rect.left - cx * nextScale;
     const ny = e.clientY - rect.top  - cy * nextScale;
-    setView(v => ({ ...v, scale: nextScale, x: nx, y: ny }));
+    setView(v => { const p = clampPan({ x: nx, y: ny }); return ({ ...v, scale: nextScale, x: p.x, y: p.y }); });
   };
 
-  // Persist/restore view
+  // Persist/restore view (per tab)
+  const restoredRef = useRef(false);
+
   useEffect(() => {
+    if (!activeTabId) return;
+    restoredRef.current = false;
     (async () => {
       try {
         const s = await getUI();
-        if (s?.canvasView) {
-          const v=s.canvasView;
-          const bad = !isFinite(v.x)||!isFinite(v.y)||!isFinite(v.scale)||v.scale<0.1||v.scale>5||Math.abs(v.x)>1e5||Math.abs(v.y)>1e5;
-          setView(bad? {x:0,y:0,scale:1}: v);
+        const v = s?.viewByTab?.[String(activeTabId)] || s?.canvasView;
+        if (v && isFinite(v.x) && isFinite(v.y) && isFinite(v.scale)) {
+          const sc = clamp(v.scale, MIN_SCALE, MAX_SCALE);
+          const p  = clampPan({ x: Number(v.x)||0, y: Number(v.y)||0 });
+          setView({ x: p.x, y: p.y, scale: sc });
+          restoredRef.current = true;
         }
       } catch {}
     })();
-  }, []);
+  }, [activeTabId]);
+
   useEffect(() => {
-    const t = setTimeout(() => {
-      try { setUI({ ...(ui||{}), canvasView: view }); } catch {}
+    if (!activeTabId) return;
+    const t = setTimeout(async () => {
+      try {
+        const s = await getUI();
+        const base = (s && typeof s === 'object') ? s : {};
+        const viewObj = { x: view.x, y: view.y, scale: view.scale };
+        const map = { ...(base.viewByTab || {}), [String(activeTabId)]: viewObj };
+        await setUI({ ...base, canvasView: viewObj, viewByTab: map });
+      } catch {}
     }, 150);
     return () => clearTimeout(t);
-  }, [view]);
-  // Window API + Alt+N
+  }, [view, activeTabId]);
+// Window API + Alt+N
   useEffect(() => {
     window.openNotesDock  = () => setUi(u => ({ ...u, open: true }));
     window.closeNotesDock = () => setUi(u => ({ ...u, open: false }));
@@ -214,7 +234,11 @@ useEffect(() => {
         return e;
       }));
       setElements(withUrls);
-      if (withUrls && withUrls.length) fitToContent(withUrls);
+      try {
+        const s = await getUI();
+        const hasSaved = Boolean(s?.viewByTab?.[String(activeTabId)]);
+        if (!hasSaved && !restoredRef.current && withUrls && withUrls.length) fitToContent(withUrls);
+      } catch { if (!restoredRef.current && withUrls && withUrls.length) fitToContent(withUrls); }
       if (view.x > (canvasRef.current?.clientWidth || 1)*2 || view.x < -(canvasRef.current?.clientWidth || 1)*2 || view.y > (canvasRef.current?.clientHeight || 1)*2 || view.y < -(canvasRef.current?.clientHeight || 1)*2) { fitToContent(withUrls); }
     })();
   }, [activeTabId, ready]);
@@ -248,7 +272,7 @@ useEffect(() => {
     el.style.setProperty('--dock-width', `${Math.round((ui.widthPct ?? 0.6) * 100)}vw`);
     el.style.setProperty('--dock-height', `${Math.round((ui.heightPct ?? 0.6) * 100)}vh`);
     el.style.setProperty('--handle-offset', `${ui.handleOffset || 0}px`);
-    setUI({ open: ui.open, widthPct: ui.widthPct, heightPct: ui.heightPct, handleOffset: ui.handleOffset });
+    (async ()=>{ try { const s = await getUI(); const base = (s && typeof s==='object')? s : {}; await setUI({ ...base, open: ui.open, widthPct: ui.widthPct, heightPct: ui.heightPct, handleOffset: ui.handleOffset }); } catch {} })();
   }, [ui]);
 
   const toggleOpen = useCallback(() => { setUi(u => ({ ...u, open: !u.open })); }, []);
@@ -550,8 +574,44 @@ if (!ready) return null;
           </ScrollTabs>
 
           <div className="notes-actions">
-            <button className="notes-iconbtn" onClick={()=>alert(t('notes.tip','Podwójnie kliknij w siatkę, aby dodać notatkę. Wklej obrazek Ctrl+V.'))}>ℹ</button>
+            <button className="notes-iconbtn" onClick={()=>setInfoOpen(true)}>ℹ</button>
           </div>
+      {/* Delete-tab modal */}
+      <LightModal
+        open={!!confirmDel}
+        onClose={()=>setConfirmDel(null)}
+        title={t('notes.deleteTabTitle','Delete tab?')}
+        footer={<>
+          <button className="btn" onClick={()=>setConfirmDel(null)}>{t('common.cancel','Cancel')}</button>
+          <button className="btn danger" onClick={async ()=>{
+            if (!confirmDel) return;
+            await deleteTab(confirmDel.id);
+            setTabs(await listTabs());
+            setActiveId(await getActiveTabId());
+            setConfirmDel(null);
+          }}>{t('common.delete','Delete')}</button>
+        </>}
+      >
+        <p>{t('notes.deleteTabMsg','This will remove the current tab with all its notes. This cannot be undone.')}</p>
+      </LightModal>
+
+      {/* Info modal */}
+      <LightModal
+        open={infoOpen}
+        onClose={()=>setInfoOpen(false)}
+        title={t('notes.helpTitle','Notes — quick help')}
+        footer={<button className="btn" onClick={()=>setInfoOpen(false)}>{t('common.ok','OK')}</button>}
+      >
+        <ul style={{margin:'0 0 0 1em', lineHeight:1.6}}>
+          <li>{t('notes.help.add','Double‑click the grid to add a note.')}</li>
+          <li>{t('notes.help.drag','Drag notes by the top bar to move them; the canvas background drags the whole view.')}</li>
+          <li>{t('notes.help.resize','Resize by grabbing the right edge, bottom edge, or the bottom‑right corner.')}</li>
+          <li>{t('notes.help.zoom','Zoom with Ctrl + mouse wheel. View (zoom & pan) is remembered per tab.')}</li>
+          <li>{t('notes.help.images','Paste (Ctrl+V) or drop an image file onto the canvas to insert it.')}</li>
+          <li>{t('notes.help.shortcuts','Shortcut: Alt+N toggles the notes dock.')}</li>
+        </ul>
+      </LightModal>
+    
         </div>
 
         <div
@@ -564,7 +624,7 @@ if (!ready) return null;
           onDragOver={(e)=>e.preventDefault()}
         >
           <div className="canvas-viewport" style={{ pointerEvents: (ui.open ? "auto" : "none"), zIndex: (ui.open ? 0 : -1) }}>
-            <div className="canvas-content" style={{ transform: 'translate(' + view.x + 'px, ' + view.y + 'px) scale(' + view.scale + ')', transformOrigin: '0 0' }}>
+            <div className="canvas-content" style={{ transform: 'translate(' + view.x + 'px, ' + view.y + 'px) scale(' + view.scale + ')', transformOrigin: '0 0', pointerEvents: 'auto' }}>
               <div className="notes-tip">{t('notes.tip','Podwójnie kliknij, aby dodać notatkę. Przeciągaj, zmieniaj rozmiar. Wklej/upuść obrazek.')}</div>
 
           {elements.map(el => (
@@ -649,9 +709,9 @@ function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText
   const HEADER_H = 28;
 
   // Bigger, always-inside hit areas (not clipped by overflow)
-  const edgeRightStyle = { position:'absolute', top:0, right:0, width:12, height:'100%', cursor:'ew-resize', zIndex:3, background:'transparent' };
-  const edgeBottomStyle= { position:'absolute', left:0, bottom:0, width:'100%', height:12, cursor:'ns-resize', zIndex:3, background:'transparent' };
-  const cornerStyle    = { position:'absolute', right:0, bottom:0, width:24, height:24, cursor:'nwse-resize', zIndex:4, background:'transparent' };
+  const edgeRightStyle = { position:'absolute', top:0, right:0, width:12, height:'100%', cursor:'ew-resize', zIndex:4, background:'transparent', pointerEvents:'auto' };;
+  const edgeBottomStyle= { position:'absolute', left:0, bottom:0, height:12, width:'100%', cursor:'ns-resize', zIndex:4, background:'transparent', pointerEvents:'auto' };;
+  const cornerStyle    = { position:'absolute', right:0, bottom:0, width:22, height:22, cursor:'nwse-resize', zIndex:5, background:'transparent', pointerEvents:'auto' };;
 
   return (
     <div className="note-item" style={boxStyle} data-note={el.id} onMouseDown={onContainerMouseDown}>
