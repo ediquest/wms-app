@@ -1240,3 +1240,4 @@ textarea::-webkit-scrollbar-corner{ background:var(--sb-corner); }
 }
 .lm-body .muted{ color: var(--muted, #9aa4bf); font-size:12px; }
 .lm-footer button[disabled]{ opacity:.6; cursor:not-allowed; }
+

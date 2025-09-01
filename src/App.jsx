@@ -8,6 +8,7 @@ import Sidebar from './components/Sidebar.jsx'
 import { loadConfig, applyTheme, setThemeLight, setThemeDark, THEME_LIGHT, getRole, setRole, THEMES, getThemeId, setThemeById } from './utils.js'
 import { getLang, setLang, t } from './i18n.js'
 import { ModalProvider } from './components/Modal.jsx'
+import InterfaceTemplate from './components/InterfaceTemplate.jsx';
 
 // 👉 importujemy stronę powitalną i helper
 import Welcome, { LS_KEY_WELCOME_DISMISSED } from './pages/Welcome.jsx'
@@ -17,6 +18,8 @@ export default function App(){
   const [lang, setLangState] = useState(getLang());
   const [scheme, setScheme] = useState(() => getThemeId(cfg));
   const [role, setRoleState] = useState(getRole());
+
+  
 
   useEffect(() => { applyTheme(cfg.theme); }, []);
 
@@ -28,6 +31,7 @@ export default function App(){
   const shouldShowWelcome = localStorage.getItem(LS_KEY_WELCOME_DISMISSED) !== '1';
 
   return (
+    
     <ModalProvider>
       <header className="topbar">
         <div className="wrap" style={{display:'flex',alignItems:'center',gap:16,flexWrap:'wrap'}}>
@@ -75,6 +79,9 @@ export default function App(){
           </footer>
         </div>
       </div>
+      <InterfaceTemplate />
     </ModalProvider>
+    
   )
+  
 }
