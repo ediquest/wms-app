@@ -12,54 +12,6 @@ import ScrollTabs from './ScrollTabs.jsx';
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-
-function NoteItemInner({ el, onBringToFront, onDragStart, onResizeStart, onChangeText, onDelete }) {
-  const [val, setVal] = React.useState(el?.content || '');
-  const saveTimerRef = React.useRef(null);
-
-  React.useEffect(() => {
-    setVal(el?.content || '');
-  }, [el?.id, el?.content]);
-
-  const onHeaderMouseDown = (e) => {
-    e.stopPropagation();
-    onBringToFront?.(el.id);
-    onDragStart?.(el.id, e.clientX, e.clientY);
-  };
-
-  const onContainerMouseDown = () => onBringToFront?.(el.id);
-
-  const onChange = (e) => {
-    const v = e.target.value;
-    setVal(v);
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => { onChangeText?.(el.id, v); }, 300);
-  };
-
-  return (
-    <div
-      className="note-item"
-      style={{ left: el.x, top: el.y, width: el.width, height: el.height }}
-      onMouseDown={onContainerMouseDown}
-    >
-      <div className="note-header" onMouseDown={onHeaderMouseDown}>
-        <div className="note-title">{t('notes.card')}</div>
-        <button className="note-close" onClick={(e)=>{ e.stopPropagation(); onDelete?.(el.id); }}>×</button>
-      </div>
-
-      <div className="note-body">
-        <textarea className="note-textarea" value={val} onChange={onChange} />
-      </div>
-
-      <div className="note-resize-e" onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart?.(el.id, e.clientX, e.clientY, 'e'); }} />
-      <div className="note-resize-s" onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart?.(el.id, e.clientX, e.clientY, 's'); }} />
-      <div className="note-resize-se" onMouseDown={(e)=>{ e.stopPropagation(); onResizeStart?.(el.id, e.clientX, e.clientY, 'se'); }} />
-    </div>
-  );
-}
-const NoteItem = React.memo(NoteItemInner, (prev, next) => prev.el === next.el);
-
-
 export default function NotesDock() {
   const [ready, setReady] = useState(false);
   const [ui, setUi] = useState({ open: false, widthPct: 0.6, heightPct: 0.6, handleOffset: 0 });
@@ -130,7 +82,7 @@ const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 
     const rect = el.getBoundingClientRect();
     const cx = (e.clientX - rect.left - view.x) / view.scale;
     const cy = (e.clientY - rect.top  - view.y) / view.scale;
-    const factor = Math.exp(-e.deltaY * 0.0010);
+    const factor = Math.exp(-e.deltaY * 0.0015);
     const nextScale = clamp(view.scale * factor, 0.3, 3);
     const nx = e.clientX - rect.left - cx * nextScale;
     const ny = e.clientY - rect.top  - cy * nextScale;
@@ -200,10 +152,10 @@ const dragHandleRef = useRef({ dragging: false, moved:false, startX: 0, startY: 
     const maxY = Math.max(...els.map(e => e.y + (e.h || 120)));
     const cw = canvasRef.current.clientWidth || 1;
     const ch = canvasRef.current.clientHeight || 1;
-    const pad = 16;
-    const contentW = Math.max(1, (maxX - minX) + pad*2);
-    const contentH = Math.max(1, (maxY - minY) + pad*2);
-    const s = Math.min(0.95, Math.max(0.6, Math.min(cw / contentW, ch / contentH)));
+    const pad = 0;
+    const contentW = Math.max(1, (maxX - minX) + pad);
+    const contentH = Math.max(1, (maxY - minY) + pad);
+    const s = Math.min(3, Math.max(0.3, Math.min(cw / contentW, ch / contentH)));
     const nx = -minX * s + pad;
     const ny = -minY * s + pad;
     setView({ x: Math.min(0, nx), y: Math.min(0, ny), scale: s });
@@ -466,7 +418,10 @@ const cw = (canvasRef.current?.clientWidth||0)/(view.scale||1);
     document.addEventListener('mouseup', mu);
   };
 
-  const onChangeText = async (id, value) => { try { await saveTextContent(id, value); } catch {} };
+  const onChangeText = async (id, value) => {
+    setElements(prev => prev.map(x => x.id === id ? { ...x, content: value } : x));
+    await saveTextContent(id, value);
+  };
 
   const onDeleteElement = async (id) => {
     await deleteElement(id);
