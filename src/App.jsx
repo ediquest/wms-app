@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import './ui-fixes.css';
-import { Routes, Route, Link } from 'react-router-dom'
+import { Routes, Route, Link, Navigate } from 'react-router-dom'
 import Interfaces from './pages/Interfaces.jsx'
 import Home from './pages/Home.jsx'
 import Admin from './pages/Admin.jsx'
@@ -8,6 +8,9 @@ import Sidebar from './components/Sidebar.jsx'
 import { loadConfig, applyTheme, setThemeLight, setThemeDark, THEME_LIGHT, getRole, setRole, THEMES, getThemeId, setThemeById } from './utils.js'
 import { getLang, setLang, t } from './i18n.js'
 import { ModalProvider } from './components/Modal.jsx'
+
+// 👉 importujemy stronę powitalną i helper
+import Welcome, { LS_KEY_WELCOME_DISMISSED } from './pages/Welcome.jsx'
 
 export default function App(){
   const [cfg, setCfg] = useState(loadConfig());
@@ -20,6 +23,9 @@ export default function App(){
   const changeLang = (e) => { const v=e.target.value; setLang(v); setLangState(v); setCfg(loadConfig()); try { window.dispatchEvent(new CustomEvent('i18n:changed', { detail: { lang: v } })); } catch(_){} };
   const changeScheme = (e) => { const v=e.target.value; setScheme(v); setThemeById(v); setCfg(loadConfig()); };;
   const changeRole = (e) => { const v=e.target.value; setRole(v); setRoleState(v); };
+
+  // 👉 sprawdzamy preferencję welcome
+  const shouldShowWelcome = localStorage.getItem(LS_KEY_WELCOME_DISMISSED) !== '1';
 
   return (
     <ModalProvider>
@@ -58,7 +64,9 @@ export default function App(){
         <Sidebar/>
         <div className="content">
           <Routes>
-            <Route path="/" element={<Interfaces/>} />
+            {/* 👉 warunkowe przekierowanie na welcome */}
+            <Route path="/" element={shouldShowWelcome ? <Navigate to="/welcome" replace /> : <Interfaces/>} />
+            <Route path="/welcome" element={<Welcome/>} />
             <Route path="/iface/:id" element={<Home/>} />
             <Route path="/admin" element={<Admin role={role}/>} />
           </Routes>

@@ -1,0 +1,10 @@
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes modal-pop-in {
+  0%   { opacity: 0; transform: translateY(8px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-fade { animation: modal-fade-in 180ms ease-out both; }
+.modal-pop  { animation: modal-pop-in 200ms cubic-bezier(.2,.8,.2,1) both; }
