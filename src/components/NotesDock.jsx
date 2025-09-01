@@ -21,6 +21,8 @@ export default function NotesDock() {
   const [tabs, setTabs] = useState([]);
   const [activeTabId, setActiveId] = useState(null);
   const [elements, setElements] = useState([]);
+  const elementsRef = useRef(elements);
+  useEffect(()=>{ elementsRef.current = elements; }, [elements]);
   const [confirmDel, setConfirmDel] = useState(null);
   const [infoOpen, setInfoOpen] = useState(false);
 
@@ -423,7 +425,7 @@ const cw = (canvasRef.current?.clientWidth||0)/(view.scale||1);
     const mu = async () => {
       document.removeEventListener('mousemove', mm);
       document.removeEventListener('mouseup', mu);
-      const final = elements.find(e => e.id === id);
+      const final = (elementsRef.current||[]).find(e => e.id === id);
       if (final) await moveResizeElement(id, { x: final.x, y: final.y });
     };
     document.addEventListener('mousemove', mm);
@@ -450,7 +452,7 @@ const cw = (canvasRef.current?.clientWidth||0)/(view.scale||1);
     const mu = async () => {
       document.removeEventListener('mousemove', mm);
       document.removeEventListener('mouseup', mu);
-      const final = elements.find(e => e.id === id);
+      const final = (elementsRef.current||[]).find(e => e.id === id);
       if (final) await moveResizeElement(id, { width: final.width, height: final.height });
     };
     document.addEventListener('mousemove', mm);
@@ -709,9 +711,10 @@ function NoteItem({ el, onBringToFront, onDragStart, onResizeStart, onChangeText
   const HEADER_H = 28;
 
   // Bigger, always-inside hit areas (not clipped by overflow)
-  const edgeRightStyle = { position:'absolute', top:0, right:0, width:12, height:'100%', cursor:'ew-resize', zIndex:4, background:'transparent', pointerEvents:'auto' };;
-  const edgeBottomStyle= { position:'absolute', left:0, bottom:0, height:12, width:'100%', cursor:'ns-resize', zIndex:4, background:'transparent', pointerEvents:'auto' };;
-  const cornerStyle    = { position:'absolute', right:0, bottom:0, width:22, height:22, cursor:'nwse-resize', zIndex:5, background:'transparent', pointerEvents:'auto' };;
+const edgeRightStyle  = { position:'absolute', top:0, right:0,  width:20, height:'100%', cursor:'ew-resize',  zIndex:9999, background:'transparent', pointerEvents:'auto' };
+const edgeBottomStyle = { position:'absolute', left:0, bottom:0, height:20, width:'100%', cursor:'ns-resize', zIndex:9999, background:'transparent', pointerEvents:'auto' };
+const cornerStyle     = { position:'absolute', right:0, bottom:0, width:28, height:28, cursor:'nwse-resize', zIndex:10000, background:'transparent', pointerEvents:'auto' };
+
 
   return (
     <div className="note-item" style={boxStyle} data-note={el.id} onMouseDown={onContainerMouseDown}>
