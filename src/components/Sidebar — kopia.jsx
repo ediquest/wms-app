@@ -35,7 +35,7 @@ const Icon = {
   Trash:  (p)=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false" {...p}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>),
   FolderOpen:(p)=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false" {...p}><path d="M3 7h5l2 2h9a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/></svg>),
 
-  // ⬇️ Ikona segmentacji (jak w dolnym panelu)
+  // ⬇️ DODANE: Ikona segmentacji (jak w dolnym panelu)
   Seg: (p)=>(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden focusable="false" {...p}>
     <circle cx="6" cy="18" r="3" stroke="currentColor" strokeWidth="2"/>
     <circle cx="6" cy="6" r="3" stroke="currentColor" strokeWidth="2"/>
@@ -85,18 +85,13 @@ export default function Sidebar(){
   const [editingTplId, setEditingTplId] = useState(null);
   const [editingName, setEditingName] = useState('');
 
-  // ⬇️ Stan globalnego modala segmentacji
+  // ⬇️ DODANE: Stan globalnego modala segmentacji
   const [segOpen, setSegOpen] = useState(false);
   const [segText, setSegText] = useState('');
   const [segFileName, setSegFileName] = useState('');
   const [segBusy, setSegBusy] = useState(false);
   const [segErr, setSegErr] = useState('');
   const fileSegRef = React.useRef(null);
-
-  // ⬇️ DODANE: faza i podsumowanie
-  const [segPhase, setSegPhase] = useState('form'); // 'form' | 'summary'
-  const [segReport, setSegReport] = useState(null);  // { byIface: { [iface]: { total, segments:{[seg]:count} } }, badCount, totalLines }
-  const [segGoId, setSegGoId] = useState(null);
 
   // keep templates in sync with storage events
   useEffect(() => {
@@ -371,17 +366,17 @@ export default function Sidebar(){
   // UI helpers
   const ifaceHighlightStyle = { boxShadow: 'inset 0 0 0 2px #2ecc71', borderRadius: 8 };
 
-  // ⬇️ obsługa pliku + drop dla Segmentacji
+  // ⬇️ DODANE: obsługa pliku + drop dla Segmentacji
   const readSegFile = (file) => {
     if (!file) return;
     try { setSegFileName(file.name || ''); } catch {}
     const fr = new FileReader();
-    fr.onload = () => {
-      try {
-        setSegText(String(fr.result || ''));
-        setSegErr('');
-      } catch {}
-    };
+     fr.onload = () => {
+        try {
+          setSegText(String(fr.result || ''));
+          setSegErr('');
+        } catch {}
+      };
     fr.onerror = () => setSegErr('Read error');
     try { fr.readAsText(file); } catch (e) { setSegErr(String(e?.message || e) || 'Error'); }
   };
@@ -390,61 +385,9 @@ export default function Sidebar(){
     try { const f = e.dataTransfer?.files?.[0]; if (f) readSegFile(f); } catch {}
   };
 
-  // ⬇️ Heurystyczne zliczanie do podsumowania (gdy segmentText nie oddaje statystyki)
-// ZAMIANA całej funkcji buildSegReportFromRaw na tę wersję:
-// ZAMIANA całej funkcji buildSegReportFromRaw na poniższą
-function buildSegReportFromRaw(rawText) {
-  const lines = String(rawText || '').split(/\r?\n/);
-  const byIface = {};
-  let bad = 0, total = 0, ok = 0;
-
-  // STRICt: 7 cyfr sekwencji, potem HL + 2 znaki (mogą być spacje), potem 3-cyfrowy segment
-  // Grupy: 1=seq(7), 2=znak1, 3=znak2, 4=segment(3)
-  const RE_STRICT = /^\s*(\d{7})\s*HL\s*([A-Z0-9])\s*([A-Z0-9])\s*([0-9]{3})/i;
-
-  // Fallback: HL + 2 znaki (ze spacjami) gdziekolwiek, a potem (gdziekolwiek dalej) 3 cyfry
-  // Grupy: 1=znak1, 2=znak2, 3=segment(3)
-  const RE_FALLBACK = /HL\s*([A-Z0-9])\s*([A-Z0-9]).*?([0-9]{3})/i;
-
-  for (const raw of lines) {
-    const line = String(raw || '').trim();
-    if (!line) continue;
-    total++;
-
-    let iface = null, seg = null;
-
-    let m = RE_STRICT.exec(line);
-    if (m) {
-      const z1 = (m[2] || '').toUpperCase();
-      const z2 = (m[3] || '').toUpperCase();
-      iface = `HL${z1}${z2}`;     // np. HL17 / HLA9 / HLAX
-      seg   = m[4];               // np. 110
-    } else {
-      m = RE_FALLBACK.exec(line);
-      if (m) {
-        const z1 = (m[1] || '').toUpperCase();
-        const z2 = (m[2] || '').toUpperCase();
-        iface = `HL${z1}${z2}`;
-        seg   = m[3];
-      }
-    }
-
-    if (!iface || !seg) { bad++; continue; }
-
-    ok++;
-    byIface[iface] ||= { total: 0, segments: {} };
-    byIface[iface].total++;
-    byIface[iface].segments[seg] = (byIface[iface].segments[seg] || 0) + 1;
-  }
-
-  return { byIface, badCount: bad, totalLines: total, okCount: ok };
-}
-
-
-
   const runSegmentation = () => {
     const raw = String(segText || '').trim();
-    if (!raw) {
+        if (!raw) {
       setSegErr(t('segEmpty') || 'Wklej najpierw tekst do segmentacji.');
       return;
     }
@@ -470,23 +413,17 @@ function buildSegReportFromRaw(rawText) {
 
       if (nextVals) saveValues(nextVals);
 
-      // potencjalny cel nawigacji (ale dopiero po OK)
+      // przejście do pierwszego interfejsu, którego dotknęła segmentacja
       let goId = involvedIfaceIds && involvedIfaceIds[0];
       if (!goId && tabsById && typeof tabsById.forEach === 'function') {
         try { tabsById.forEach((arr, id) => { if (!goId && Array.isArray(arr) && arr.length > 0) goId = id; }); } catch {}
       }
 
-      // Zbuduj podsumowanie na bazie surowego wejścia
-      const report = buildSegReportFromRaw(raw);
-
-      // Pokaż podsumowanie w modalu i czekaj na „OK”
-      setSegGoId(goId || null);
-      setSegReport(report);
-      setSegPhase('summary');
       setSegBusy(false);
-
-      // UWAGA: nie zamykamy modala i nie robimy alertów
-      // Zamknięcie/nawigacja dopiero po kliknięciu „OK” w sekcji SUMMARY
+      setSegOpen(false);
+      setSegText(''); setSegFileName('');
+      if (goId) navigate('/iface/' + String(goId));
+      else alert(t('segSummary') || 'Segmentacja zakończona. Brak dopasowanych interfejsów do otwarcia.');
     } catch (e) {
       console.error(e);
       setSegErr(String(e?.message || e) || 'Error');
@@ -684,15 +621,7 @@ function buildSegReportFromRaw(rawText) {
           <div className="s-list">
             <button
               className="s-item"
-              onClick={()=>{
-                setSegOpen(true);
-                setSegPhase('form');
-                setSegReport(null);
-                setSegGoId(null);
-                setSegErr('');
-                setSegText('');
-                setSegFileName('');
-              }}
+              onClick={()=>setSegOpen(true)}
               style={{display:'flex',alignItems:'center',gap:8,justifyContent:'flex-start'}}
               title={t('segTooltip') || 'Wklej/wczytaj tekst i uruchom segmentację'}
             >
@@ -815,110 +744,42 @@ function buildSegReportFromRaw(rawText) {
         onConfirm={()=>{ try { deleteTemplate(tplToDelete?.id); } catch(e){ console.error('[Sidebar] delete tpl failed', e); } setTemplates(loadTemplates()); setIsDeleteTplOpen(false); setTplToDelete(null); }}
       />
 
-      {/* ⬇️ MODAL: SEGMENTACJA (globalnie z menu) */}
-      <LightModal
-        open={segOpen}
-        onClose={()=>{ if (!segBusy) { setSegOpen(false); setSegPhase('form'); setSegReport(null); setSegGoId(null); setSegErr(''); } }}
-        width={720}
-        title={t('segmentation') || 'Segmentacja'}
-      >
-        {segPhase === 'form' ? (
-          <div className="form-grid" style={{gridTemplateColumns:'1fr', rowGap:16}}>
-            <div className="form-row">
-              <div className="muted">{t('chooseFile') || 'Wybierz plik'}</div>
-              <div
-                onDragOver={e=>{e.preventDefault(); e.stopPropagation();}}
-                onDrop={onDropSeg}
-                style={{border:'1px dashed var(--border, #1b2447)', borderRadius:10, padding:16, textAlign:'center', userSelect:'none'}}
-              >
-                <div style={{opacity:.85, marginBottom:8}}>{t('dropHere') || 'Upuść plik tutaj lub kliknij “Wybierz plik”.'}</div>
-                <button className="ghost" type="button" onClick={()=>fileSegRef.current?.click()}>{t('chooseFile') || 'Wybierz plik'}</button>
-                <input ref={fileSegRef} type="file" accept=".txt,.log,.csv,text/plain" onChange={e=>{ const f=e.target.files?.[0]; if(f) readSegFile(f); e.target.value=''; }} style={{display:'none'}}/>
-                {segFileName ? <div className="muted" style={{marginTop:8}}>{segFileName}</div> : null}
-              </div>
+      {/* ⬇️ NOWY MODAL: SEGMENTACJA (globalnie z menu) */}
+      <LightModal open={segOpen} onClose={()=>!segBusy && setSegOpen(false)} width={720} title={t('segmentation') || 'Segmentacja'}>
+        <div className="form-grid" style={{gridTemplateColumns:'1fr', rowGap:16}}>
+          <div className="form-row">
+            <div className="muted">{t('chooseFile') || 'Wybierz plik'}</div>
+            <div
+              onDragOver={e=>{e.preventDefault(); e.stopPropagation();}}
+              onDrop={onDropSeg}
+              style={{border:'1px dashed var(--border, #1b2447)', borderRadius:10, padding:16, textAlign:'center', userSelect:'none'}}
+            >
+              <div style={{opacity:.85, marginBottom:8}}>{t('dropHere') || 'Upuść plik tutaj lub kliknij “Wybierz plik”.'}</div>
+              <button className="ghost" type="button" onClick={()=>fileSegRef.current?.click()}>{t('chooseFile') || 'Wybierz plik'}</button>
+              <input ref={fileSegRef} type="file" accept=".txt,.log,.csv,text/plain" onChange={e=>{ const f=e.target.files?.[0]; if(f) readSegFile(f); e.target.value=''; }} style={{display:'none'}}/>
+              {segFileName ? <div className="muted" style={{marginTop:8}}>{segFileName}</div> : null}
             </div>
+          </div>
 
-            <label className="form-row">
-              <div className="muted">{t('orPasteText') || 'Albo wklej tekst'}</div>
-              <textarea
+          <label className="form-row">
+            <div className="muted">{t('orPasteText') || 'Albo wklej tekst'}</div>
+             <textarea
                 rows={8}
                 value={segText}
                 onChange={e=>{ setSegText(e.target.value); if (segErr) setSegErr(''); }}
                 placeholder="Wklej linie do segmentacji..."
               />
-            </label>
+          </label>
 
-            {segErr ? <div className="muted" style={{color:'#ff6b6b'}}>{segErr}</div> : null}
+          {segErr ? <div className="muted" style={{color:'#ff6b6b'}}>{segErr}</div> : null}
 
-            <div style={{display:'flex', justifyContent:'flex-end', gap:12}}>
-              <button type="button" className="ghost" disabled={segBusy} onClick={()=>{ setSegOpen(false); setSegPhase('form'); setSegReport(null); setSegGoId(null); setSegErr(''); }}>{t('cancel') || 'Anuluj'}</button>
-              <button type="button" onClick={runSegmentation} disabled={segBusy} style={{ background:'#16a34a', color:'#fff', padding:'10px 16px', borderRadius:10, fontWeight:600}}>
-                {t('segRun') || 'Uruchom segmentację'}
-              </button>
-            </div>
+          <div style={{display:'flex', justifyContent:'flex-end', gap:12}}>
+            <button type="button" className="ghost" disabled={segBusy} onClick={()=>setSegOpen(false)}>{t('cancel') || 'Anuluj'}</button>
+            <button type="button" onClick={runSegmentation} disabled={segBusy} style={{ background:'#16a34a', color:'#fff', padding:'10px 16px', borderRadius:10, fontWeight:600}}>
+              {t('segRun') || 'Uruchom segmentację'}
+            </button>
           </div>
-        ) : (
-          // === SUMMARY VIEW ===
-          <div className="form-grid" style={{gridTemplateColumns:'1fr', rowGap:16}}>
-            <div style={{fontWeight:700}}>{t('summary') || 'Podsumowanie'}</div>
-
-                          {(segReport?.totalLines || 0) > 0 ? (() => {
-                const ok = segReport.okCount ?? ((segReport.totalLines || 0) - (segReport.badCount || 0));
-                const pct = Math.round(ok * 100 / (segReport.totalLines || 1));
-                return (
-                  <div className="muted" style={{display:'flex', gap:16, flexWrap:'wrap'}}>
-                    <span><strong>{t('recognizedLines') || 'Rozpoznane linie'}:</strong> {ok} / {segReport.totalLines} ({pct}%)</span>
-                  </div>
-                );
-              })() : null}
-
-
-            {/* Lista interfejsów i segmentów */}
-            <div style={{display:'grid', gap:12}}>
-              {Object.keys(segReport?.byIface || {}).sort().map(iface => {
-                const info = segReport.byIface[iface] || { total:0, segments:{} };
-                const segments = Object.entries(info.segments).sort((a,b)=>a[0].localeCompare(b[0]));
-                return (
-                  <div key={iface} style={{padding:'8px 12px', border:'1px solid var(--border,#1b2447)', borderRadius:10}}>
-                    <div style={{fontWeight:700, marginBottom:6}}>{iface} <span style={{opacity:.7}}>• {info.total} linii</span></div>
-                    <div style={{display:'flex', flexWrap:'wrap', gap:8}}>
-                      {segments.map(([seg, count])=>(
-                        <span key={seg} className="badge">{seg}: {count}</span>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Błędne linie — tylko gdy > 0 */}
-            {(segReport?.badCount || 0) > 0 ? (
-              <div className="muted" style={{color:'#ff6b6b'}}>
-                {(t('invalidLines') || 'Błędne linie')}: {segReport.badCount}
-              </div>
-            ) : null}
-
-            <div style={{display:'flex', justifyContent:'flex-end', gap:12}}>
-              <button type="button" className="ghost" disabled={segBusy} onClick={()=>{
-                // wróć do edycji
-                setSegPhase('form'); setSegReport(null); setSegGoId(null);
-              }}>{t('back') || 'Wróć'}</button>
-
-              <button type="button" style={{ background:'#16a34a', color:'#fff', padding:'10px 16px', borderRadius:10, fontWeight:600}}
-                onClick={()=>{
-                  const go = segGoId;
-                  // zamknij + przejdź
-                  setSegOpen(false);
-                  setSegPhase('form'); setSegReport(null);
-                  setSegText(''); setSegFileName(''); setSegGoId(null); setSegErr('');
-                  if (go) navigate('/iface/' + String(go));
-                }}
-              >
-                {t('ok') || 'OK'}
-              </button>
-            </div>
-          </div>
-        )}
+        </div>
       </LightModal>
     </>
   );
