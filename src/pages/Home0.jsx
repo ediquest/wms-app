@@ -1426,7 +1426,7 @@ if (!iface) return null;
               <div className="secHeader" style={{margin:'8px 0 6px 0', fontWeight:600}}>
                 {(iface.sectionNumbers?.[activeSec] || String(activeSec*10).padStart(3,'0'))} · {iface.sections[activeSec]}
               </div>
-              <div className="grid" key={`grid-${iface?.id||"iface"}-${activeSec}-${(typeof window!=="undefined" ? (localStorage.getItem("tcf_genTabs_active_"+String(iface?.id))||"") : "")}` }>
+              <div className="grid" key={`grid-${iface?.id||"iface"}-${activeSec}` }>
                 {orderedInSec.map((fi, k) => (
                   <React.Fragment key={`${activeSec}-${fi}`}>
                     {(k>0 && isDef(orderedInSec[k-1]) && !isDef(fi)) && <div className="sep" style={{gridColumn:'1 / -1'}}></div>}
@@ -1446,7 +1446,7 @@ if (!iface) return null;
               </div>
               <div className="actions-split">
                 <div className="actions">
-<GeneratedTabs key={(iface?.id||'iface') + ':' + String(activeSec)}
+<GeneratedTabs key={(iface?.id||'iface') + ':' + String(genTabsVersion)}
   iface={iface}
   activeSec={activeSec}
   values={values}

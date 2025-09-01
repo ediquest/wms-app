@@ -115,12 +115,7 @@ export default function GeneratedTabs({
   // Zapis bieżących wartości do aktywnej zakładki, jeśli się zmieniły
   const persistActiveSnapshot = useCallback((vals) => {
     try {
-      let id = null;
-      if (typeof window !== "undefined") {
-        try { id = localStorage.getItem(lastEditedKey) || localStorage.getItem(activeKey) || activeId; } catch { id = activeId; }
-      } else {
-        id = activeId;
-      }
+      const id = (typeof window !== "undefined") ? (localStorage.getItem(activeKey) || activeId) : activeId;
       if (!id) return false;
       const idx = tabs.findIndex(t => t.id === id);
       if (idx === -1) return false;
@@ -129,65 +124,66 @@ export default function GeneratedTabs({
       const same = Array.isArray(prev) && prev.length === snap.length && prev.every((v,i)=>String(v)===String(snap[i]));
       if (same) return false;
       const next = tabs.slice();
-      next[idx] = { ...next[idx], snapshot: snap, updatedAt: Date.now() };
+      next[idx] = { ...next[idx], snapshot: snap };
       setTabs(next);
       writeTabs(next);
       return true;
     } catch { return false; }
-  }, [activeId, tabs, key]);// Auto-utworzenie pierwszej zakładki po wpisaniu w bieżącej sekcji
+  }, [activeId, tabs, key]);
+
+  // Auto-utworzenie pierwszej zakładki po wpisaniu w bieżącej sekcji
   const autoCreateFromValues = useCallback(() => {
     const secIdx = activeSec;
     const idxs = idxsFor(iface, secIdx);
     if (!idxs.length) return false;
     const has = idxs.some(i => String(values?.[i] ?? "").trim().length > 0);
     if (!has) return false;
+    // If any generated tab already exists for this section, do NOT auto-create another one.
     if (Array.isArray(tabs) && tabs.some(t => Number(t.secIdx) === Number(secIdx))) return false;
 
     const activeIdLS = (typeof window !== "undefined") ? (localStorage.getItem(activeKey) || activeId) : activeId;
     const activeTab = tabs.find(t => t.id === activeIdLS);
     if (activeTab && activeTab.secIdx === secIdx) return false;
-
     const secNo = secNoFor(secIdx);
-    const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
+    const id = Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
     const snapshot = Array.isArray(values) ? [...values] : [];
     const next = [...tabs, { id, secIdx, secNo, snapshot }];
     setTabs(next);
     writeTabs(next);
-    try { localStorage.setItem(activeKey, id); } catch {}
-    try { localStorage.setItem(lastEditedKey, id); } catch {}
     setActiveId(id);
+    try { localStorage.setItem(activeKey, id); } catch {}
     if (typeof onChange === "function") onChange();
     return true;
-  }, [values, activeSec, iface, tabs, activeId, key, onChange]);// Ręczne dodanie nowej podsekcji dla bieżącej sekcji (przycisk +)
+  }, [values, activeSec, iface, tabs, activeId, key, onChange]);
+
+  // Ręczne dodanie nowej podsekcji dla bieżącej sekcji (przycisk +)
   const addTabForCurrent = useCallback(() => {
     const secIdx = activeSec;
     const secNo = secNoFor(secIdx);
-    const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
+    const id = Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
     const snapshot = Array.isArray(values) ? [...values] : [];
     const next = [...tabs, { id, secIdx, secNo, snapshot }];
     setTabs(next);
     writeTabs(next);
-    try { localStorage.setItem(activeKey, id); } catch {}
-    try { localStorage.setItem(lastEditedKey, id); } catch {}
     setActiveId(id);
+    try { localStorage.setItem(activeKey, id); } catch {}
     if (typeof onChange === "function") onChange();
-  }, [activeSec, values, tabs, key, onChange]);// Otwieranie / usuwanie
+  }, [activeSec, values, tabs, key, onChange]);
+
+  // Otwieranie / usuwanie
   const onOpen = useCallback((tab) => {
+    // no persist on navigation
     if (typeof onSwitchSection === "function") onSwitchSection(tab.secIdx);
-    try { localStorage.setItem(activeKey, tab.id); } catch {}
-    try { localStorage.setItem(lastEditedKey, tab.id); } catch {}
-    setActiveId(tab.id);
     applySnapshot(tab);
-    try {
-      const idx = tabs.findIndex(t => t.id === tab.id);
-      if (idx !== -1) {
-        const next = tabs.slice();
-        next[idx] = { ...next[idx], updatedAt: Date.now() };
-        setTabs(next); writeTabs(next);
-      }
-    } catch {}
+    setActiveId(tab.id);
+    try { localStorage.setItem(activeKey, tab.id);
+    localStorage.setItem(lastEditedKey, tab.id);
+    try { const idx = tabs.findIndex(t => t.id === tab.id); if (idx !== -1) { const next = tabs.slice(); next[idx] = { ...next[idx], updatedAt: Date.now() }; setTabs(next); writeTabs(next); } } catch {}
+ } catch {}
     if (typeof onChange === "function") onChange();
-  }, [onSwitchSection, tabs, onChange]);const onRemove = useCallback((tab) => {
+  }, [persistActiveSnapshot, values, onSwitchSection, onChange]);
+
+  const onRemove = useCallback((tab) => {
     const next = tabs.filter(t => t.id !== tab.id);
     setTabs(next);
     writeTabs(next);
@@ -203,44 +199,15 @@ export default function GeneratedTabs({
   const prevValsStrRef = useRef("");
   useEffect(() => {
     const s = JSON.stringify(values || []);
-    if (s === prevValsStrRef.current) return;
-    prevValsStrRef.current = s;
+    if (s !== prevValsStrRef.current) {
+      prevValsStrRef.current = s;
+      autoCreateFromValues();
+      const changed = persistActiveSnapshot(values);
+      if (changed && typeof onChange === "function") onChange();
+    }
+  }, [values, autoCreateFromValues, persistActiveSnapshot]);
 
-    let raf = 0;
-    raf = requestAnimationFrame(() => {
-      try {
-        const latest = JSON.parse(prevValsStrRef.current || "[]");
-        autoCreateFromValues();
-        const changed = persistActiveSnapshot(latest);
-        if (changed && typeof onChange === "function") onChange();
-      } catch {
-        autoCreateFromValues();
-        const changed = persistActiveSnapshot(values);
-        if (changed && typeof onChange === "function") onChange();
-      }
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [values, autoCreateFromValues, persistActiveSnapshot, onChange]);
-
-  // Flush przy opuszczaniu widoku / nawigacji
-  useEffect(() => {
-    const flush = () => {
-      try {
-        const latest = JSON.parse(prevValsStrRef.current || "[]");
-        persistActiveSnapshot(latest);
-      } catch {
-        persistActiveSnapshot(values);
-      }
-    };
-    const onVis = () => { if (document.visibilityState === 'hidden') flush(); };
-    window.addEventListener('visibilitychange', onVis);
-    window.addEventListener('pagehide', flush);
-    return () => {
-      window.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('pagehide', flush);
-    };
-  }, [persistActiveSnapshot, values]);
-// Etykiety 010-1, 010-2, ...
+  // Etykiety 010-1, 010-2, ...
   const labeledTabs = useMemo(() => {
     const counts = {};
     return (tabs || []).map(t => {

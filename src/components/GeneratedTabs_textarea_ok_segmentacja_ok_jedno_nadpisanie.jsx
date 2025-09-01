@@ -34,6 +34,10 @@ export default function GeneratedTabs({
   const [activeId, setActiveId] = useState(() => { try { return localStorage.getItem(activeKey) || null; } catch { return null; } });
   useEffect(() => { setTabs(readTabs()); }, [key]);
 
+// ---- persistence guards ----
+const persistTargetRef = React.useRef(null);
+React.useEffect(()=>{ persistTargetRef.current = activeId; }, [activeId]);
+
   useEffect(() => {
     // mark that we just entered this section; first live sync will be ignored
     try { enteredSecRef.current = (enteredSecRef.current || 0) + 1; } catch {}
@@ -113,13 +117,15 @@ export default function GeneratedTabs({
   };
 
   // Zapis bieżących wartości do aktywnej zakładki, jeśli się zmieniły
+  
   const persistActiveSnapshot = useCallback((vals) => {
+    if ((enteredSecRef.current||0) > 0) { try { enteredSecRef.current = 0; } catch{}; return false; }
     try {
       let id = null;
       if (typeof window !== "undefined") {
-        try { id = localStorage.getItem(lastEditedKey) || localStorage.getItem(activeKey) || activeId; } catch { id = activeId; }
+        id = localStorage.getItem(lastEditedKey) || localStorage.getItem(activeKey) || persistTargetRef.current || activeId;
       } else {
-        id = activeId;
+        id = persistTargetRef.current || activeId;
       }
       if (!id) return false;
       const idx = tabs.findIndex(t => t.id === id);
@@ -134,60 +140,116 @@ export default function GeneratedTabs({
       writeTabs(next);
       return true;
     } catch { return false; }
-  }, [activeId, tabs, key]);// Auto-utworzenie pierwszej zakładki po wpisaniu w bieżącej sekcji
-  const autoCreateFromValues = useCallback(() => {
-    const secIdx = activeSec;
-    const idxs = idxsFor(iface, secIdx);
-    if (!idxs.length) return false;
-    const has = idxs.some(i => String(values?.[i] ?? "").trim().length > 0);
-    if (!has) return false;
-    if (Array.isArray(tabs) && tabs.some(t => Number(t.secIdx) === Number(secIdx))) return false;
+  }, [activeId, tabs, key]);
 
-    const activeIdLS = (typeof window !== "undefined") ? (localStorage.getItem(activeKey) || activeId) : activeId;
-    const activeTab = tabs.find(t => t.id === activeIdLS);
-    if (activeTab && activeTab.secIdx === secIdx) return false;
 
-    const secNo = secNoFor(secIdx);
-    const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
-    const snapshot = Array.isArray(values) ? [...values] : [];
-    const next = [...tabs, { id, secIdx, secNo, snapshot }];
+  // Auto-utworzenie pierwszej zakładki po wpisaniu w bieżącej sekcji
+// Tworzy zakładkę dla bieżącej sekcji, ale tylko jeśli:
+// - w tej sekcji nie ma już zakładki
+// - w values jest cokolwiek wpisane (nie same puste stringi)
+// Tworzy zakładkę dla bieżącej sekcji, ale tylko gdy:
+// - w tej sekcji nie ma już zakładki
+// - w values jest cokolwiek wpisane (nie same puste stringi)
+// Tworzy kartę dla bieżącej sekcji tylko gdy:
+// - dla tej sekcji nie ma już karty
+// - w values jest cokolwiek niepustego
+const autoCreateFromValues = useCallback(() => {
+  try {
+    const secIdxNum = Number(activeSec);
+
+    // 1) nic nie rób, jeśli dla tej sekcji już istnieje karta
+    const existsForSection =
+      Array.isArray(tabs) && tabs.some(t => Number(t.secIdx) === secIdxNum);
+    if (existsForSection) return false;
+
+    // 2) sprawdź czy cokolwiek wpisano
+    const hasAny =
+      Array.isArray(values) && values.some(v => String(v ?? '').trim().length > 0);
+    if (!hasAny) return false;
+
+    // 3) utwórz kartę (bez title)
+    const id =
+      (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : String(Date.now());
+
+    const now = Date.now();
+    const newTab = {
+      id,
+      secIdx: secIdxNum,
+      secNo: secNoFor(secIdxNum),
+      snapshot: Array.isArray(values) ? [...values] : [],
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const next = [...(tabs || []), newTab];
     setTabs(next);
     writeTabs(next);
+
+    // 4) ustaw LS **przed** setActiveId (ważne dla wyścigów)
     try { localStorage.setItem(activeKey, id); } catch {}
     try { localStorage.setItem(lastEditedKey, id); } catch {}
     setActiveId(id);
-    if (typeof onChange === "function") onChange();
+
     return true;
-  }, [values, activeSec, iface, tabs, activeId, key, onChange]);// Ręczne dodanie nowej podsekcji dla bieżącej sekcji (przycisk +)
-  const addTabForCurrent = useCallback(() => {
-    const secIdx = activeSec;
-    const secNo = secNoFor(secIdx);
-    const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,7);
+  } catch {
+    return false;
+  }
+}, [activeSec, values, tabs, activeKey, lastEditedKey]);
+
+
+
+
+  // Ręczne dodanie nowej podsekcji dla bieżącej sekcji (przycisk +)
+// Dodaj nową kartę dla bieżącej sekcji (bez nadpisywania innych)
+const addTabForCurrent = useCallback(() => {
+  try {
+    const secIdxNum = Number(activeSec);
+    const secNo = secNoFor(secIdxNum);
+
+    const id =
+      (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+
     const snapshot = Array.isArray(values) ? [...values] : [];
-    const next = [...tabs, { id, secIdx, secNo, snapshot }];
+    const now = Date.now();
+
+    const newTab = { id, secIdx: secIdxNum, secNo, snapshot, createdAt: now, updatedAt: now };
+    const next = [...(tabs || []), newTab];
+
     setTabs(next);
     writeTabs(next);
+
+    // Ustaw LS **przed** setActiveId — to ważne dla wyścigu zdarzeń
     try { localStorage.setItem(activeKey, id); } catch {}
     try { localStorage.setItem(lastEditedKey, id); } catch {}
+
     setActiveId(id);
-    if (typeof onChange === "function") onChange();
-  }, [activeSec, values, tabs, key, onChange]);// Otwieranie / usuwanie
+
+    if (typeof onChange === 'function') onChange();
+    return true;
+  } catch {
+    return false;
+  }
+}, [activeSec, values, tabs, activeKey, lastEditedKey, onChange]);
+
+
+  // Otwieranie / usuwanie
   const onOpen = useCallback((tab) => {
+    // no persist on navigation
     if (typeof onSwitchSection === "function") onSwitchSection(tab.secIdx);
-    try { localStorage.setItem(activeKey, tab.id); } catch {}
-    try { localStorage.setItem(lastEditedKey, tab.id); } catch {}
-    setActiveId(tab.id);
     applySnapshot(tab);
-    try {
-      const idx = tabs.findIndex(t => t.id === tab.id);
-      if (idx !== -1) {
-        const next = tabs.slice();
-        next[idx] = { ...next[idx], updatedAt: Date.now() };
-        setTabs(next); writeTabs(next);
-      }
-    } catch {}
+    setActiveId(tab.id);
+    try { localStorage.setItem(activeKey, tab.id);
+    localStorage.setItem(lastEditedKey, tab.id);
+    try { const idx = tabs.findIndex(t => t.id === tab.id); if (idx !== -1) { const next = tabs.slice(); next[idx] = { ...next[idx], updatedAt: Date.now() }; setTabs(next); writeTabs(next); } } catch {}
+ } catch {}
     if (typeof onChange === "function") onChange();
-  }, [onSwitchSection, tabs, onChange]);const onRemove = useCallback((tab) => {
+  }, [persistActiveSnapshot, values, onSwitchSection, onChange]);
+
+  const onRemove = useCallback((tab) => {
     const next = tabs.filter(t => t.id !== tab.id);
     setTabs(next);
     writeTabs(next);
@@ -203,44 +265,15 @@ export default function GeneratedTabs({
   const prevValsStrRef = useRef("");
   useEffect(() => {
     const s = JSON.stringify(values || []);
-    if (s === prevValsStrRef.current) return;
-    prevValsStrRef.current = s;
+    if (s !== prevValsStrRef.current) {
+      prevValsStrRef.current = s;
+      autoCreateFromValues();
+      const changed = persistActiveSnapshot(values);
+      if (changed && typeof onChange === "function") onChange();
+    }
+  }, [values, autoCreateFromValues, persistActiveSnapshot]);
 
-    let raf = 0;
-    raf = requestAnimationFrame(() => {
-      try {
-        const latest = JSON.parse(prevValsStrRef.current || "[]");
-        autoCreateFromValues();
-        const changed = persistActiveSnapshot(latest);
-        if (changed && typeof onChange === "function") onChange();
-      } catch {
-        autoCreateFromValues();
-        const changed = persistActiveSnapshot(values);
-        if (changed && typeof onChange === "function") onChange();
-      }
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [values, autoCreateFromValues, persistActiveSnapshot, onChange]);
-
-  // Flush przy opuszczaniu widoku / nawigacji
-  useEffect(() => {
-    const flush = () => {
-      try {
-        const latest = JSON.parse(prevValsStrRef.current || "[]");
-        persistActiveSnapshot(latest);
-      } catch {
-        persistActiveSnapshot(values);
-      }
-    };
-    const onVis = () => { if (document.visibilityState === 'hidden') flush(); };
-    window.addEventListener('visibilitychange', onVis);
-    window.addEventListener('pagehide', flush);
-    return () => {
-      window.removeEventListener('visibilitychange', onVis);
-      window.removeEventListener('pagehide', flush);
-    };
-  }, [persistActiveSnapshot, values]);
-// Etykiety 010-1, 010-2, ...
+  // Etykiety 010-1, 010-2, ...
   const labeledTabs = useMemo(() => {
     const counts = {};
     return (tabs || []).map(t => {

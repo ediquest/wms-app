@@ -478,7 +478,7 @@ return () => clearTimeout(timer);
           // choose source values
           const snap = Array.isArray(tab.snapshot) ? tab.snapshot : vals;
           let rowVals;
-          if (!combineAll && tab.id && activeId && tab.id === activeId && Number(tab.secIdx) === Number(secIdx)) {
+          if (!combineAll && tab.id && activeId && tab.id === activeId && Number(tab.secIdx) === Number(activeSec)) {
             // active tab uses live values so textarea updates while typing
             rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
           } else if (snap && typeof snap[0] === 'object' && snap[0] && snap[0].i !== undefined) {
@@ -760,7 +760,7 @@ return out.join('\n');
   // Default: fixed width
   return outLines.join('\n');
 
-}, [combineAll, combineOrder, cfg, valsMap, iface, values, csvMode, csvSep, csvHeader, jsonMode, skipEmpty, jsonMinified, jsonArray, genTabsVersion]);
+}, [activeSec, combineAll, combineOrder, cfg, valsMap, iface, values, csvMode, csvSep, csvHeader, jsonMode, skipEmpty, jsonMinified, jsonArray, genTabsVersion]);
 ;
 
   const onChange = (i, v) => {
@@ -1426,7 +1426,7 @@ if (!iface) return null;
               <div className="secHeader" style={{margin:'8px 0 6px 0', fontWeight:600}}>
                 {(iface.sectionNumbers?.[activeSec] || String(activeSec*10).padStart(3,'0'))} · {iface.sections[activeSec]}
               </div>
-              <div className="grid" key={`grid-${iface?.id||"iface"}-${activeSec}-${(typeof window!=="undefined" ? (localStorage.getItem("tcf_genTabs_active_"+String(iface?.id))||"") : "")}` }>
+              <div className="grid" key={`grid-${iface?.id||"iface"}-${activeSec}` }>
                 {orderedInSec.map((fi, k) => (
                   <React.Fragment key={`${activeSec}-${fi}`}>
                     {(k>0 && isDef(orderedInSec[k-1]) && !isDef(fi)) && <div className="sep" style={{gridColumn:'1 / -1'}}></div>}
@@ -1446,7 +1446,7 @@ if (!iface) return null;
               </div>
               <div className="actions-split">
                 <div className="actions">
-<GeneratedTabs key={(iface?.id||'iface') + ':' + String(activeSec)}
+<GeneratedTabs key={(iface?.id||'iface') + ':' + String(genTabsVersion)}
   iface={iface}
   activeSec={activeSec}
   values={values}

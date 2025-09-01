@@ -179,3 +179,100 @@ body[class*="theme-dark"] .dock .dock-panel{
 }
 .modal-fade-leave { animation: modal-fade-out 220ms ease-in forwards; }
 .modal-pop-leave  { animation: modal-pop-out 220ms cubic-bezier(.4,0,1,1) forwards; }
+
+/* === Modal alerts – LIGHT schemes only === */
+/* dopasowuje popularne znaczniki motywu – wejdzie gdy NIE jest dark */
+:root:not([data-theme*="dark"]) .modal .alert-success,
+body:not([data-theme*="dark"]) .modal .alert-success,
+.theme-light .modal .alert-success,
+.light .modal .alert-success {
+  background: #d1f1dc;          /* jaśniejsze tło, ale wyraźne */
+  border: 1px solid #34d399;     /* emerald-400 */
+  color: #0f5132;                /* ciemna zieleń (wysoki kontrast) */
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-weight: 600;
+}
+
+/* Dla przypadków, gdy używacie innej nazwy klasy (ok/success) */
+:root:not([data-theme*="dark"]) .modal .success,
+:root:not([data-theme*="dark"]) .modal .ok {
+  background: #d1f1dc;
+  border: 1px solid #34d399;
+  color: #0f5132;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-weight: 600;
+}
+
+/* Opcjonalnie: spójne kolory pozostałych alertów w JASNYM motywie */
+:root:not([data-theme*="dark"]) .modal .alert-error {
+  background: #fde2e1;
+  border: 1px solid #f87171;
+  color: #7f1d1d;
+  border-radius: 12px; padding: 12px 16px; font-weight: 600;
+}
+:root:not([data-theme*="dark"]) .modal .alert-info {
+  background: #e0f2fe;
+  border: 1px solid #60a5fa;
+  color: #0c4a6e;
+  border-radius: 12px; padding: 12px 16px; font-weight: 600;
+}
+
+/* NotesDock – tylko gdy otwarty ma łapać kliknięcia */
+.canvas-viewport { pointer-events: none !important; z-index: 0 !important; }
+.notes-open .canvas-viewport { pointer-events: auto !important; z-index: 50 !important; }
+.notes-closed .canvas-viewport { pointer-events: none !important; z-index: -1 !important; }
+
+/* NotesDock: gdy zamknięty – ukryj i wyłącz interakcję warstw notatnika */
+.notes-closed .note-textarea,
+.notes-closed .note-resizer,
+.notes-closed .note-layer,
+.notes-closed .note-overlay,
+.notes-closed .note-box {
+  pointer-events: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  z-index: -1 !important;
+}
+
+/* Gdy otwarty – przywróć interakcję */
+.notes-open .note-textarea,
+.notes-open .note-resizer,
+.notes-open .note-layer,
+.notes-open .note-overlay,
+.notes-open .note-box {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 60 !important; /* pod modalami, nad treścią */
+}
+
+/* NotesDock: gdy zamknięty — NIC od notatek nie przechwytuje klików ani nie jest widoczne */
+.notes-closed .note-item,
+.notes-closed .note-item *,
+.notes-closed .note-textarea,
+.notes-closed .note-resizer,
+.notes-closed .note-layer,
+.notes-closed .note-overlay,
+.notes-closed .note-box,
+.notes-closed .canvas-viewport {
+  pointer-events: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  z-index: -1 !important;
+}
+
+/* Gdy notatnik otwarty — przywróć interakcję (warstwy ponad treścią, ale pod modalami) */
+.notes-open .note-item,
+.notes-open .note-textarea,
+.notes-open .note-resizer,
+.notes-open .note-layer,
+.notes-open .note-overlay,
+.notes-open .note-box,
+.notes-open .canvas-viewport {
+  pointer-events: auto !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 60 !important; /* pod modalami, nad treścią */
+}
