@@ -1241,3 +1241,27 @@ textarea::-webkit-scrollbar-corner{ background:var(--sb-corner); }
 .lm-body .muted{ color: var(--muted, #9aa4bf); font-size:12px; }
 .lm-footer button[disabled]{ opacity:.6; cursor:not-allowed; }
 
+/* Sub-sekcje – lekko większe niż wcześniejszy compact */
+.tabs-bottom.is-compact { gap: 8px; }                   /* było 6px */
+
+.tabs-bottom.is-compact .tab-bottom {
+  padding: 4px 10px;                                    /* było 2px 8px */
+  min-height: 30px;                                     /* było 26px */
+  border-radius: 2px;                                   /* było 6px */
+}
+
+.tabs-bottom.is-compact .tab-label {
+  font-size: 13px;                                      /* było 12px */
+  line-height: 1.25;
+}
+
+.tabs-bottom.is-compact .close {
+  width: 18px; height: 18px;                            /* było 16x16 */
+  font-size: 13px;                                      /* było 12px */
+  padding: 0 4px;                                       /* było 0 3px */
+}
+
+/* Plus „dodaj” */
+.tabs-bottom.is-compact .tab-bottom--add .tab-label { font-size: 13px; }
+
+

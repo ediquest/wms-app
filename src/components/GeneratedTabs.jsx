@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { t as tt } from '../i18n.js';
 
 /**
  * GeneratedTabs — dolne zakładki
@@ -315,45 +316,65 @@ export default function GeneratedTabs({
   return (
     <>
       {/* Dolne zakładki */}
-      <div className={`tabs-bottom${dragId ? " is-dragging" : ""}`}>
+      <div className={`tabs-bottom is-compact${dragId ? " is-dragging" : ""}`}>
         {(labeledTabs || []).map((t) => {
           const isActive = t.id === activeId;
           const isDragOver = overId === t.id;
           const overCls = isDragOver ? (overPos === "before" ? " drag-over-before" : " drag-over-after") : "";
           return (
-            <div
-              key={t.id}
-              className={`tab-bottom${isActive ? " active" : ""}${overCls}`}
-              draggable
-              onDragStart={(e) => onDragStart(e, t.id)}
-              onDragOver={(e) => onDragOver(e, t.id)}
-              onDrop={(e) => onDrop(e, t.id)}
-              onDragEnd={onDragEnd}
-            >
-              <button className="tab" onClick={() => onOpen(t)}>{t.label}</button>
-              <button className="close" onClick={() => onRemove(t)} aria-label="Usuń">×</button>
-            </div>
+              <div
+                key={t.id}
+                className={`tab-bottom${isActive ? " active" : ""}${overCls}`}
+                draggable
+                onDragStart={(e) => onDragStart(e, t.id)}
+                onDragOver={(e) => onDragOver(e, t.id)}
+                onDrop={(e) => onDrop(e, t.id)}
+                onDragEnd={onDragEnd}
+                role="button"
+                tabIndex={0}
+                aria-pressed={isActive}
+                onClick={() => onOpen(t)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(t); }
+                }}
+              >
+                <span className="tab-label">{t.label}</span>
+                <button
+                  type="button"
+                  className="close"
+                  onClick={(e) => { e.stopPropagation(); onRemove(t); }}
+                  aria-label={tt('delete','Usuń')}
+                  title={tt('delete','Usuń')}
+                >
+                  ×
+                </button>
+              </div>
+
           );
         })}
 
         {/* + dodaj / drop na koniec */}
-        <div
-          className="tab-bottom tab-bottom--add"
-          onDragOver={(e) => { e.preventDefault(); setOverId("ADD"); setOverPos("after"); }}
-          onDrop={onDropToAdd}
-          onDragEnd={onDragEnd}
-        >
-          <button className="tab" onClick={addTabForCurrent} title="Dodaj podsekcję">
-            + Dodaj sekcje
-          </button>
-        </div>
+          <div
+            className="tab-bottom tab-bottom--add"
+            onDragOver={(e) => { e.preventDefault(); setOverId("ADD"); setOverPos("after"); }}
+            onDrop={onDropToAdd}
+            onDragEnd={onDragEnd}
+            role="button"
+            tabIndex={0}
+            onClick={addTabForCurrent}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addTabForCurrent(); } }}
+            title={tt('addSubsection','Dodaj podsekcję')}
+          >
+            <span className="tab-label">{tt('addSubsection','+ Dodaj podsekcję')}</span>
+          </div>
+
       </div>
 
-      {activeLabel ? (
-        <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
-          Aktywna podsekcja: <b>{activeLabel}</b>
-        </div>
-      ) : null}
+        {activeLabel ? (
+          <div className="muted" style={{ marginTop: 4, fontSize: 12 }}>
+            {tt('activeSubsection','Aktywna podsekcja')}: <b>{activeLabel}</b>
+          </div>
+        ) : null}
     </>
   );
 }
