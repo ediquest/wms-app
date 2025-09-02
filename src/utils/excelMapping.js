@@ -36,12 +36,16 @@ export function sectionCodeFor(iface, sIdx) {
   return String(sIdx).padStart(3, '0');
 }
 
-export function buildUsedSectionsData(iface, valsMap) {
+export 
+
+function buildUsedSectionsData(iface, valsMap) {
   const id = iface?.id;
   const labels = Array.isArray(iface?.labels) ? iface.labels : [];
   const fieldSections = Array.isArray(iface?.fieldSections) ? iface.fieldSections : [];
   const baseVals = Array.isArray(valsMap?.[id]) ? valsMap[id] : [];
   const tabs = loadTabsForInterface(id);
+
+  // grupuj zakładki wg indeksu sekcji
   const tabsBySec = new Map();
   for (const t of tabs) {
     const sec = t?.secIdx;
@@ -49,26 +53,37 @@ export function buildUsedSectionsData(iface, valsMap) {
     if (!tabsBySec.has(sec)) tabsBySec.set(sec, []);
     tabsBySec.get(sec).push(t);
   }
+
   const result = [];
   const totalSecs = (iface?.sections?.length || 0);
+
   for (let s = 1; s < totalSecs; s++) {
-    const idxs = fieldSections.map((sec, i) => (sec === s ? i : -1)).filter(i => i !== -1);
-    const rows = idxs.map(i => {
-      const base = baseVals[i] ?? '';
-      const tabVals = (tabsBySec.get(s) || []).map(t => {
-        const snap = Array.isArray(t.snapshot) ? t.snapshot : [];
-        const hit = snap.find(x => x.i === i);
-        return hit ? (hit.v ?? '') : '';
-      }).filter(v => v !== '');
-      const all = [base, ...tabVals].filter(v => String(v).trim() !== '');
-      const value = all.length ? all.join('\n') : '';
-      return { label: labels[i] ?? (`Field ${i}`), value };
-    });
+    const rows = labels
+      .map((lab, i) => ({ lab, i }))
+      .filter(x => fieldSections?.[x.i] === s)
+      .map(({ lab, i }) => {
+        // WARTOŚĆ = ZAWSZE z PIERWSZEJ zakładki danej sekcji (jeśli istnieje).
+        const firstTab = (tabsBySec.get(s) || [])[0];
+        let value = '';
+        if (firstTab) {
+          const snap = Array.isArray(firstTab.snapshot) ? firstTab.snapshot : [];
+          const hit = snap.find(x => x.i === i);
+          value = hit ? (hit.v ?? '') : '';
+        } else {
+          // Brak zakładek: opcjonalny fallback do wartości bazowej.
+          value = baseVals[i] ?? '';
+        }
+        return { label: lab ?? (`Field ${i}`), value };
+      });
+
+    // Dodajemy sekcję tylko jeśli ma jakąś wartość (niepustą)
     const used = rows.some(r => String(r.value).trim() !== '');
     if (used) result.push({ code: sectionCodeFor(iface, s) || String(s).padStart(3, '0'), rows });
   }
   return result;
 }
+
+
 
 export function createWorkbookNewFile(iface, valsMap, finalText) {
   const wb = XLSX.utils.book_new();
