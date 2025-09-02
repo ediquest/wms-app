@@ -891,7 +891,7 @@ const sortedInterfaces = useMemo(() => {
             </div>
             <div className="actions">
               <button type="button" onClick={()=>setIsAddOpen(true)}>{t('newInterfaceTitle')}</button>
-              <button type="button" onClick={exportAll}>{t('export')}</button>
+              <button type="button" onClick={exportAll}>{t('exportBackup')}</button>
               <button type="button" onClick={()=>setIsBackupOpen(true)}>{t('importBackup') || 'Import Backup'}</button>
               <button type="button" onClick={()=>setIsWmsOpen(true)}>{t('import')}</button>
               <DataImportButtons cfg={cfg} setCfg={setCfg} t={t} />

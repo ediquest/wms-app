@@ -844,7 +844,7 @@ function buildSegReportFromRaw(rawText) {
                 rows={8}
                 value={segText}
                 onChange={e=>{ setSegText(e.target.value); if (segErr) setSegErr(''); }}
-                placeholder="Wklej linie do segmentacji..."
+                placeholder={t('pasteLinesPlaceholder') || 'Wklej linie do segmentacji...'}
               />
             </label>
 
@@ -860,7 +860,7 @@ function buildSegReportFromRaw(rawText) {
         ) : (
           // === SUMMARY VIEW ===
           <div className="form-grid" style={{gridTemplateColumns:'1fr', rowGap:16}}>
-            <div style={{fontWeight:700}}>{t('summary') || 'Podsumowanie'}</div>
+            <div style={{fontWeight:700}}>{t('segSummary') || 'Podsumowanie'}</div>
 
                           {(segReport?.totalLines || 0) > 0 ? (() => {
                 const ok = segReport.okCount ?? ((segReport.totalLines || 0) - (segReport.badCount || 0));

@@ -93,7 +93,7 @@ export default function GlobalSegModal({ open, onClose }){
 
         <label className="form-row">
           <div className="muted">{t('orPasteText') || 'Albo wklej tekst'}</div>
-          <textarea rows={8} value={text} onChange={(e)=>setText(e.target.value)} placeholder="Wklej linie do segmentacji..." />
+          <textarea rows={8} value={text} onChange={(e)=>setText(e.target.value)} placeholder={t('pasteLinesPlaceholder') || 'Wklej linie do segmentacji...'} />
         </label>
 
         {err ? <div className="muted" style={{ color: '#ff6b6b' }}>{err}</div> : null}

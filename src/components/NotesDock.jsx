@@ -564,12 +564,7 @@ if (!ready) return null;
                 name={tab.name}
                 onClick={() => onPickTab(tab.id)}
                 onRename={(name) => onRenameTab(tab.id, name)}
-                onDelete={() => {
-                  if (confirm(t('notes.deleteTabConfirm','Usunąć zakładkę?'))) deleteTab(tab.id).then(async ()=>{
-                    setTabs(await listTabs());
-                    setActiveId(await getActiveTabId());
-                  });
-                }}
+                onDelete={() => setConfirmDel({ id: tab.id, name: tab.name })}
               />
             ))}
             <button className="notes-addtab" onClick={onAddTab}>+ {t('notes.addTab','Dodaj zakładkę')}</button>
