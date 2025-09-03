@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState , useRef, useCallback} from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { loadConfig, saveConfig, loadValues, saveValues as saveValuesCore, padToLen, timestamp, loadProjects, saveProjects, snapshotProject, applyProject} from '../utils.js';
+import { loadConfig, saveConfig, loadValues, saveValues as saveValuesCore, timestamp, loadProjects, saveProjects, snapshotProject, applyProject} from '../utils.js';
 import { t } from '../i18n.js';
+import { fitToLength } from '../utils/fixedWidth.js';
 import { saveTemplate as tplSave } from '../utils.templates.js';
 import ScrollTabs from '../components/ScrollTabs.jsx';
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
@@ -438,7 +439,7 @@ return () => clearTimeout(timer);
         const sIx = tab.secIdx;
         const idxs = (iface.fieldSections || []).map((s,i)=>s===sIx?i:-1).filter(i=>i!==-1);
         const snapMap = new Map(((tab.snapshot)||[]).map(p => [p.i, p.v]));
-        return idxs.map(i => padToLen(snapMap.has(i) ? snapMap.get(i) : (values[i] ?? ''), getLen(i))).join('');
+        return idxs.map(i => fitToLength(snapMap.has(i) ? snapMap.get(i) : (values[i] ?? ''), getLen(i), (iface.types?.[i] || 'alphanumeric'), { flex: isFlex(i), truncate: true })).join('');
       });
     }
     const included = (Array.isArray(iface.includedSections) && iface.includedSections.length === iface.sections.length)
@@ -447,7 +448,7 @@ return () => clearTimeout(timer);
     const lines = (iface.sections || []).map((_, secIdx) => {
       if (secIdx > 0 && !included[secIdx]) return '';
       const idxs = iface.fieldSections.map((s, i) => s === secIdx ? i : -1).filter(i => i !== -1);
-      return idxs.map(i => padToLen(values[i] ?? '', getLen(i))).join('');
+      return idxs.map(i => fitToLength(values[i] ?? '', getLen(i), (iface.types?.[i] || 'alphanumeric'), { flex: isFlex(i), truncate: true })).join('');
     });
     return lines;
   }, [values, iface]);
@@ -499,7 +500,7 @@ return () => clearTimeout(timer);
               rowVals[posInRow] = seqStr;
             }
           }
-          const padded = rowVals.map((v, k) => padToLen(v, getLenFor(itf, idxs[k])));
+          const padded = rowVals.map((v, k) => fitToLength(v, getLenFor(itf, idxs[k]), (itf.types?.[idxs[k]] || 'alphanumeric'), { flex: isFlexFor(itf, idxs[k]), truncate: true }));
           linesFromTabs.push(padded.join(''));
           seq += 1;
         }
@@ -533,7 +534,7 @@ return () => clearTimeout(timer);
 }
 
       // padding per field using existing helpers
-      const padded = row.map((v, k) => padToLen(v, getLenFor(itf, idxs[k])));
+      const padded = row.map((v, k) => fitToLength(v, getLenFor(itf, idxs[k]), (itf.types?.[idxs[k]] || 'alphanumeric'), { flex: isFlexFor(itf, idxs[k]), truncate: true }));
       lines.push(padded.join(''));
 
       // increment global sequence after pushing line
@@ -787,7 +788,7 @@ return out.join('\n');
     return;
   }
   setValues(curr => {
-      const next = curr.slice(); next[i] = padToLen(next[i] ?? '', max);
+      const next = curr.slice(); next[i] = fitToLength(next[i] ?? '', max, (iface.types?.[i] || 'alphanumeric'), { flex: isFlex(i), truncate: true });
       const map = { ...valsMap, [iface.id]: next }; setValsMap(map); saveValuesLocal(map);
       return next;
     });
