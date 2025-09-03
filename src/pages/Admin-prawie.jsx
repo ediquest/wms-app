@@ -470,7 +470,6 @@ export default function Admin({ role }) {
   const fileInputOneRef = useRef(null);
   const location = useLocation()
   const navigate = useNavigate();
-  const BASE = (import.meta.env?.BASE_URL || '/').replace(/\/+$/, '');
 
   // Read & clear jump from Home -> Admin
   const readJump = () => {
@@ -478,7 +477,7 @@ export default function Admin({ role }) {
   };
   const clearJump = () => { try { localStorage.removeItem('intgen_admin_jump'); } catch {} };
 
-  // Clear stale jump when user is on admin overview
+  // Clear stale jump when user is on admin overview (so Back is always to list next time)
   useEffect(() => {
     try {
       const sp = new URLSearchParams(location.search || '');
@@ -487,22 +486,24 @@ export default function Admin({ role }) {
     } catch {}
   }, [location.search]);
 
-  // Top back: prefer jump; else go to admin overview (base-aware)
   const handleTopBack = (e) => {
     if (e && e.preventDefault) e.preventDefault();
     const sp = new URLSearchParams(location.search || '');
     const jump = readJump();
 
+    // Case 1: came from Home -> return to exact iface & section
     if (jump && jump.ifaceId != null) {
       const id = String(jump.ifaceId);
-      const sec = Number.isFinite(+jump.sec) ? String(+jump.sec) : (sp.get('sec') ?? '0');
+      const secFromJump = Number.isFinite(+jump.sec) ? String(+jump.sec) : null;
+      const sec = secFromJump || (sp.get('sec') ?? '0');
       clearJump();
       navigate({ pathname: `/iface/${encodeURIComponent(id)}`, search: `?sec=${sec}` }, { replace: true });
       return;
     }
-    // ensure UI mode also flips to overview (no second click)
+
+    // Case 2: admin context -> ensure UI flips to overview and navigate there
     try { setMode && setMode('overview'); } catch {}
-    navigate({ pathname: '/admin', search: `?view=overview` }, { replace: true });
+    navigate({ pathname: '/admin', search: '?view=overview' }, { replace: true });
   };
 
 
@@ -1216,7 +1217,7 @@ useEffect(() => {
         <h2>{t('editInterface')} · <span className="pill">{current?.name}</span></h2>
         {role !== 'editor' && (
           <div className="actions" style={{ justifyContent: 'space-between' }}>
-            <a className="link" href="#" onClick={handleTopBack}>← {t('back')}</a>
+            <a className="link" href="/admin?view=overview" onClick={handleTopBack}>← {t('back')}</a>
           </div>
 
         )}
@@ -1553,7 +1554,7 @@ useEffect(() => {
 
               <div className="actions" style={{ justifyContent: 'space-between' }}>
                 <div><button onClick={() => { const n = cloneIface(); n.labels.push(`Pole ${n.labels.length + 1}`); n.descriptions.push(''); n.lengths.push(10); n.required.push(false); n.types.push('alphanumeric'); n.fieldSections.push(activeSec); n.flexFields = Array.isArray(n.flexFields) ? n.flexFields.slice() : []; n.flexFields.push(false); applyIface(n); const vals = loadValues(); const arr = vals[currentId] ?? []; arr.push(''); vals[currentId] = arr; saveValues(vals); }}>{t('addField')}</button></div>
-                <div><a className="link" href={`${BASE}/admin?view=overview`}>← {t('backToList')}</a></div>
+                <div><a className="link" href="/admin?view=overview">← {t('backToList')}</a></div>
               </div>
             </>
           )}

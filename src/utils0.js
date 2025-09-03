@@ -96,7 +96,7 @@ const DEFAULT_IFACES = [{
   flexFields:Array(12).fill(false),
 
   sectionNotes:Array(2).fill(''),
-  sectionNotesEnabled:[false, false],
+  sectionNotesEnabled:[false,true],
 }];
 const DEFAULT_CFG = { siteTitle:'', homeTitle:'', homeSubtitle:'', theme:THEME_DARK, themeId:'dark', categories:DEFAULT_CATS, interfaces:DEFAULT_IFACES };
 

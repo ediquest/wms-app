@@ -5,7 +5,7 @@ import DataImportButtons from '../components/DataImportButtons.jsx';
 
 import SortableFields from "../components/SortableFields.jsx";
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { loadConfig, saveConfig, loadValues, saveValues, timestamp } from '../utils.js'
 import { t } from '../i18n.js'
 import ScrollTabs from '../components/ScrollTabs.jsx'
@@ -469,42 +469,6 @@ export default function Admin({ role }) {
   const [pendingImportId, setPendingImportId] = useState(null)
   const fileInputOneRef = useRef(null);
   const location = useLocation()
-  const navigate = useNavigate();
-  const BASE = (import.meta.env?.BASE_URL || '/').replace(/\/+$/, '');
-
-  // Read & clear jump from Home -> Admin
-  const readJump = () => {
-    try { return JSON.parse(localStorage.getItem('intgen_admin_jump') || 'null'); } catch { return null; }
-  };
-  const clearJump = () => { try { localStorage.removeItem('intgen_admin_jump'); } catch {} };
-
-  // Clear stale jump when user is on admin overview
-  useEffect(() => {
-    try {
-      const sp = new URLSearchParams(location.search || '');
-      const view = sp.get('view') || 'overview';
-      if (view === 'overview') clearJump();
-    } catch {}
-  }, [location.search]);
-
-  // Top back: prefer jump; else go to admin overview (base-aware)
-  const handleTopBack = (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    const sp = new URLSearchParams(location.search || '');
-    const jump = readJump();
-
-    if (jump && jump.ifaceId != null) {
-      const id = String(jump.ifaceId);
-      const sec = Number.isFinite(+jump.sec) ? String(+jump.sec) : (sp.get('sec') ?? '0');
-      clearJump();
-      navigate({ pathname: `/iface/${encodeURIComponent(id)}`, search: `?sec=${sec}` }, { replace: true });
-      return;
-    }
-    // ensure UI mode also flips to overview (no second click)
-    try { setMode && setMode('overview'); } catch {}
-    navigate({ pathname: '/admin', search: `?view=overview` }, { replace: true });
-  };
-
 
   useEffect(() => {
     const fresh = normalizeConfig(loadConfig())
@@ -1216,7 +1180,7 @@ useEffect(() => {
         <h2>{t('editInterface')} · <span className="pill">{current?.name}</span></h2>
         {role !== 'editor' && (
           <div className="actions" style={{ justifyContent: 'space-between' }}>
-            <a className="link" href="#" onClick={handleTopBack}>← {t('back')}</a>
+            <a className="link" href="/admin?view=overview">← {t('backToList')}</a>
           </div>
 
         )}
@@ -1553,7 +1517,7 @@ useEffect(() => {
 
               <div className="actions" style={{ justifyContent: 'space-between' }}>
                 <div><button onClick={() => { const n = cloneIface(); n.labels.push(`Pole ${n.labels.length + 1}`); n.descriptions.push(''); n.lengths.push(10); n.required.push(false); n.types.push('alphanumeric'); n.fieldSections.push(activeSec); n.flexFields = Array.isArray(n.flexFields) ? n.flexFields.slice() : []; n.flexFields.push(false); applyIface(n); const vals = loadValues(); const arr = vals[currentId] ?? []; arr.push(''); vals[currentId] = arr; saveValues(vals); }}>{t('addField')}</button></div>
-                <div><a className="link" href={`${BASE}/admin?view=overview`}>← {t('backToList')}</a></div>
+                <div><a className="link" href="/admin?view=overview">← {t('backToList')}</a></div>
               </div>
             </>
           )}

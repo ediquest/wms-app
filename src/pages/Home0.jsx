@@ -152,10 +152,7 @@ export default function Home() {
     try {
       localStorage.setItem('intgen_admin_jump', JSON.stringify({ ifaceId: ifId, sec, ts: Date.now() }));
     } catch {}
-    (() => {
-      try { sessionStorage.setItem('intgen_admin_return', JSON.stringify({ from: 'home', path: location.pathname, search: `?sec=${sec}`, ts: Date.now() })); } catch {} 
-      return navigate({ pathname: '/admin', search: `?view=edit&iface=${encodeURIComponent(ifId)}&sec=${sec}` }, { state: { from: 'home', backPath: location.pathname, backSearch: `?sec=${sec}` } });
-    })()
+    navigate({ pathname: '/admin', search: `?view=edit&iface=${encodeURIComponent(ifId)}&sec=${sec}` });
   }, [iface?.id, activeSec, navigate]);
 
   // --- Section notes (per section) ---
