@@ -143,6 +143,36 @@ const [iface, setIface] = useState(null);
   const [valsMap, setValsMap] = useState(loadValues());
   const [values, setValues] = useState([]);
   const [activeSec, setActiveSec] = useState(0);
+  // --- Section notes (per section) ---
+  const secNotesUserKey = useMemo(() => iface ? (String(iface.id) + '_secNotes') : null, [iface]);
+  const secNotesUserArr = useMemo(() => {
+    const n = iface?.sections?.length || 0;
+    const base = Array(n).fill('');
+    try {
+      const arr = secNotesUserKey ? valsMap[secNotesUserKey] : null;
+      if (Array.isArray(arr)) {
+        for (let i=0;i<n;i++) base[i] = String(arr[i] ?? '');
+      }
+    } catch (e) {}
+    // fallback to defaults from config if user has nothing
+    if (iface && Array.isArray(iface.sectionNotes)) {
+      for (let i=0;i<Math.min(base.length, iface.sectionNotes.length); i++) {
+        if (!base[i]) base[i] = String(iface.sectionNotes[i] ?? '');
+      }
+    }
+    return base;
+  }, [iface, valsMap, secNotesUserKey]);
+  const secNoteValue = secNotesUserArr?.[activeSec] ?? '';
+  const saveSecNote = useCallback((val) => {
+    if (!iface || !secNotesUserKey) return;
+    const n = iface.sections?.length || 0;
+    const curr = Array.isArray(valsMap[secNotesUserKey]) ? valsMap[secNotesUserKey].slice() : Array(n).fill('');
+    if (curr.length < n) { const nn = Array(n).fill(''); for (let i=0;i<curr.length;i++) nn[i]=curr[i]; curr.splice(0, curr.length, ...nn); }
+    curr[activeSec] = val;
+    const map = { ...valsMap, [secNotesUserKey]: curr };
+    setValsMap(map); saveValuesLocal(map);
+  }, [iface, activeSec, valsMap, secNotesUserKey]);
+
 // --- guard: block rehydrate for a short period after switching sections/tabs
 const secSwitchTsRef = useRef(0);
 const SEC_SWITCH_BLOCK_MS = 1500;
@@ -1468,11 +1498,37 @@ if (!iface) return null;
   )}
 </GeneratedTabs>
                 </div>
+
                 <div className="actions">
                   <button onClick={fillDefaultValues}>{t('fillDefaults') || 'Fill in default values'}</button>
 
                   <button onClick={()=>{ setClearSectionIdx(activeSec); setIsClearSectionOpen(true); }}>{t('clearSection')}</button>
 </div>
+                
+{/* Additional information (section note) – place this BEFORE the buttons/actions container */}
+{iface.sectionNotesEnabled?.[activeSec] && (
+  <div className="card" style={{ padding: 12, marginTop: 16, marginBottom: 16, width: '100%' }}>
+    <div style={{ fontSize: 12, opacity: 0.8, marginBottom: 6 }}>{t('additionalInfo')}</div>
+    <textarea
+      rows={10}
+      value={secNoteValue}
+      readOnly
+      aria-readonly="true"
+      // kluczowe: kursor strzałki + brak “caret”
+      style={{
+        width: '100%',
+        resize: 'vertical',
+        opacity: 0.95,
+        cursor: 'default',
+        caretColor: 'transparent',
+      }}
+      // opcjonalnie: nie pojawi się focus po tabie
+      tabIndex={-1}
+      title={t('additionalInfo')}
+    />
+  </div>
+)}
+
               </div>
             </>
           )}

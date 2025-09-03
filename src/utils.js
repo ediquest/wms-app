@@ -93,7 +93,10 @@ const DEFAULT_IFACES = [{
   sections:['Introduction','Pierwsza sekcja'], sectionNumbers:['000','010'],
   fieldSections:Array(12).fill(0),
   separators:[],
-  flexFields:Array(12).fill(false)
+  flexFields:Array(12).fill(false),
+
+  sectionNotes:Array(2).fill(''),
+  sectionNotesEnabled:[false,true],
 }];
 const DEFAULT_CFG = { siteTitle:'', homeTitle:'', homeSubtitle:'', theme:THEME_DARK, themeId:'dark', categories:DEFAULT_CATS, interfaces:DEFAULT_IFACES };
 
@@ -144,6 +147,17 @@ export function loadConfig(){
         (i.mode === 'flex'
           ? Array((i.labels || []).length).fill(true)
           : Array((i.labels || []).length).fill(false)),
+      sectionNotes: (Array.isArray(i.sectionNotes) && Array.isArray(i.sections))
+        ? (i.sectionNotes.length === i.sections.length
+            ? i.sectionNotes.map(x => String(x ?? ''))
+            : i.sections.map((_, ix) => String(i.sectionNotes?.[ix] ?? '')))
+        : (Array.isArray(i.sections) ? i.sections.map(() => '') : []),
+      sectionNotesEnabled: (Array.isArray(i.sectionNotesEnabled) && Array.isArray(i.sections))
+        ? (i.sectionNotesEnabled.length === i.sections.length
+            ? i.sectionNotesEnabled.map(v => !!v)
+            : i.sections.map((_, ix) => !!i.sectionNotesEnabled?.[ix]))
+        : (Array.isArray(i.sections) ? i.sections.map((_, ix) => ix === 0 ? false : true) : []),
+
     }));
     return cfg;
   } catch (e) {

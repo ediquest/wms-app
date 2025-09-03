@@ -109,6 +109,25 @@ function expandFieldsToFlat(iface) {
   if (!Array.isArray(iface.sectionColors) || iface.sectionColors.length !== n) {
     iface.sectionColors = Array(n).fill('');
   }
+
+  // --- ensure sectionNotes & sectionNotesEnabled are aligned with sections ---
+  {
+    const count = Array.isArray(iface.sections) ? iface.sections.length : 0;
+    if (!Array.isArray(iface.sectionNotes)) iface.sectionNotes = Array(count).fill('');
+    if (iface.sectionNotes.length !== count) {
+      iface.sectionNotes = Array.from({ length: count }, (_, ix) => String(iface.sectionNotes[ix] || ''));
+    }
+    if (!Array.isArray(iface.sectionNotesEnabled)) {
+      // default: intro disabled, others enabled
+      iface.sectionNotesEnabled = Array.from({ length: count }, (_, ix) => ix !== 0);
+    }
+    if (iface.sectionNotesEnabled.length !== count) {
+      iface.sectionNotesEnabled = Array.from(
+        { length: count },
+        (_, ix) => !!(iface.sectionNotesEnabled[ix] ?? (ix !== 0))
+      );
+    }
+  }
   return iface;
 }
 
@@ -540,6 +559,8 @@ export default function Admin({ role }) {
     separators: (current.separators || []).slice(),
     defaultFields: (current.defaultFields || []).slice(),
     flexFields: (current.flexFields || []).slice()
+    ,sectionNotes: (current.sectionNotes || Array(current.sections.length).fill('')).slice()
+    ,sectionNotesEnabled: (current.sectionNotesEnabled || current.sections.map((_, ix) => ix !== 0)).slice()
   })
 
   const injectDefaultsIntoSection = (iface, secIdx) => {
@@ -1144,6 +1165,7 @@ export default function Admin({ role }) {
               </table>
             </div>
           ) : (
+            <>
             <div className="actions" style={{ gap: 12, flexWrap: 'wrap' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span>{t('sectionNumber')}:</span>
@@ -1161,6 +1183,8 @@ export default function Admin({ role }) {
                 <input type="text" value={current.sections[activeSec]} onChange={e => { const n = cloneIface(); n.sections[activeSec] = e.target.value; applyIface(n); }} />
               </label>
             </div>
+         
+            </>
           )}
 
           {/* Fields for non-intro sections */}
@@ -1416,6 +1440,41 @@ export default function Admin({ role }) {
             </>
           )}
         </div>
+           {/* Section Additional information toggle + default text */}
+            <div className="card" style={{ padding: 12, marginTop: 12 }}>
+              <label style={{ display:'inline-flex', alignItems:'center', gap:8, marginBottom:8 }} title={t('showAdditionalInfo')}>
+                <input
+                  type="checkbox"
+                  checked={(current.sectionNotesEnabled?.[activeSec] ?? (activeSec!==0))}
+                  onChange={e => {
+                    const n = cloneIface();
+                    if (!Array.isArray(n.sectionNotesEnabled) || n.sectionNotesEnabled.length !== n.sections.length) {
+                      n.sectionNotesEnabled = n.sections.map((_, ix) => ix !== 0);
+                    }
+                    n.sectionNotesEnabled[activeSec] = !!e.target.checked;
+                    applyIface(n);
+                  }}
+                />
+                <span>{t('showAdditionalInfo')}</span>
+              </label>
+
+              <div style={{ fontSize: 12, opacity: .8, marginBottom: 6 }}>{t('additionalInfo')}</div>
+
+              <textarea
+                rows={10}
+                style={{ width: '100%', resize: 'vertical' }}
+                value={(current.sectionNotes && typeof current.sectionNotes[activeSec] === 'string') ? current.sectionNotes[activeSec] : ''}
+                onChange={e => {
+                  const n = cloneIface();
+                  if (!Array.isArray(n.sectionNotes) || n.sectionNotes.length !== n.sections.length) {
+                    n.sectionNotes = n.sections.map(() => '');
+                  }
+                  n.sectionNotes[activeSec] = e.target.value;
+                  applyIface(n);
+                }}
+                placeholder={t('additionalInfo')}
+              />
+            </div>
       </section>
 
       <section className="card">
