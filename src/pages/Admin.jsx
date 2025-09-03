@@ -1595,7 +1595,8 @@ useEffect(() => {
             </div>
       </section>
 
-      <section className="card">
+      {mode === 'overview' && (
+<section className="card">
         <div className="card-head"><h3>Kategorie</h3></div>
         <table className="table" style={{ width: '100%' }}>
           <thead><tr><th>ID</th><th>Nazwa</th><th>Interfejsy</th><th>Akcje</th></tr></thead>
@@ -1620,6 +1621,7 @@ useEffect(() => {
           <button onClick={() => setIsAddCategoryOpen(true)}>{t('addCategory')}</button>
         </div>
       </section>
+)}
 
       <input ref={rowFileRef} type="file" accept="application/json" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const txt = String(r.result).replace(/^\uFEFF/, ''); const obj = JSON.parse(txt); importFromJsonTop(obj, cfg, setCfg, t); } catch (err) { console.error('[import] parse error', err); alert(t('invalidJson') || 'Nieprawidłowy plik JSON.'); } }; r.readAsText(f); e.target.value = ''; }} />
 
