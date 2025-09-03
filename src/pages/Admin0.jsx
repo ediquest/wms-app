@@ -18,6 +18,7 @@ import RenameCategoryModal from '../components/RenameCategoryModal.jsx';
 import ImportBackupModal from '../components/ImportBackupModal.jsx';
 import ImportWmsModal from '../components/ImportWmsModal.jsx';
 import DeleteInterfaceModal from '../components/DeleteInterfaceModal.jsx';
+import LightModal from '../components/LightModal.jsx';
 // --- helpers: wykrywanie i normalizacja pojedynczego interfejsu ---
 function isSingleInterface(obj) {
   if (!obj || !Array.isArray(obj.sections)) return false;
@@ -267,6 +268,8 @@ export default function Admin({ role }) {
   }
 
   // --- Add Interface modal state ---
+  const [delSecIdx, setDelSecIdx] = useState(null);
+  const [delRowIdx, setDelRowIdx] = useState(null);
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [isDeleteCatOpen, setIsDeleteCatOpen] = useState(false);
@@ -1230,18 +1233,7 @@ useEffect(() => {
               <div key={idx} className={`tab-admin ${idx === activeSec ? 'active' : ''}`} onClick={() => setActiveSec(idx)} title={`${(((current.sections[idx] || '').match(/\b(\d{3})\b/) || [])[1] || (((current.sections[idx] || '').match(/\b(\d{3})\b/) || [])[1] || (((current.sections[idx] || '').match(/\b(\d{3})\b/) || [])[1] || current.sectionNumbers?.[idx] || String(idx * 10).padStart(3, '0'))))} · ${s}`}>
                 <span>{idx === 0 ? 'Introduction' : ((((current.sections[idx] || '').match(/\b(\d{3})\b/) || [])[1] || (((current.sections[idx] || '').match(/\b(\d{3})\b/) || [])[1] || current.sectionNumbers?.[idx] || String(idx * 10).padStart(3, '0'))))}</span>
                 {idx > 0 && role !== 'editor' && (
-                  <button className="close" onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm(t('delete') + '?')) {
-                      const n = { ...current };
-                      n.sections = n.sections.filter((_, ix) => ix !== idx);
-                      n.sectionNumbers = (n.sectionNumbers || []).filter((_, ix) => ix !== idx);
-                      n.includedSections = (n.includedSections || n.sections.map((_, j) => j > 0)).filter((_, ix2) => ix2 !== idx);
-                      n.fieldSections = n.fieldSections.map(v => v === idx ? 0 : (v > idx ? v - 1 : v));
-                      n.sectionColors = (n.sectionColors || n.sections.map(() => "")).filter((_, ix2) => ix2 !== idx);
-                      applyIface(n); setActiveSec(0);
-                    }
-                  }}>×</button>
+                  <button className="close" onClick={(e) => { e.stopPropagation(); setDelSecIdx(idx); }}>×</button>
                 )}
               </div>
             ))}
@@ -1515,34 +1507,17 @@ useEffect(() => {
                                 </button>
 
                                 <button
-                                  onClick={() => {
-                                    const n = cloneIface();
-                                    n.labels.splice(fi, 1);
-                                    n.descriptions.splice(fi, 1);
-                                    n.lengths.splice(fi, 1);
-                                    n.required.splice(fi, 1);
-                                    n.types.splice(fi, 1);
-                                    n.fieldSections.splice(fi, 1);
-                                    n.flexFields = (n.flexFields || []).slice();
-                                    n.flexFields.splice(fi, 1);
-                                    n.separators = n.separators.filter(s => s !== fi).map(s => s > fi ? s - 1 : s);
-                                    applyIface(n);
-                                    const vals = loadValues();
-                                    const arr = (vals[currentId] ?? []).slice();
-                                    arr.splice(fi, 1);
-                                    vals[currentId] = arr;
-                                    saveValues(vals);
-                                  }}
+                                  onClick={() => { setDelRowIdx(fi); }}
                                   style={{ minWidth: 128 }}
                                 >
                                   {t('delete')}
                                 </button>
-                              </div>
                             </div>
 
 
 
-                          </React.Fragment>
+                                                  </div>
+</React.Fragment>
                         );
                       }}
 
@@ -1660,6 +1635,102 @@ useEffect(() => {
         onSubmit={(payload) => { createCategoryFromModal(payload); }}
       />
 
-    </main>
+    
+      <LightModal
+        open={delSecIdx !== null}
+        onClose={() => setDelSecIdx(null)}
+        title={t('delete')}
+        footer={(
+          <>
+            <button type="button" className="ghost" onClick={() => setDelSecIdx(null)}>{t('cancel')}</button>
+            <button
+              type="button"
+              className="danger"
+              onClick={() => {
+                const idx = delSecIdx;
+                if (idx === null || idx === undefined) return;
+                const n = { ...current };
+                // compute helpers from ORIGINAL arrays to keep indices aligned
+                const prevIncluded = Array.isArray(current.includedSections) ? current.includedSections : current.sections.map((_, j) => j > 0);
+                const prevColors = Array.isArray(current.sectionColors) ? current.sectionColors : current.sections.map(() => '');
+                n.sections = current.sections.filter((_, ix) => ix !== idx);
+                n.sectionNumbers = (current.sectionNumbers || []).filter((_, ix) => ix !== idx);
+                n.includedSections = prevIncluded.filter((_, ix2) => ix2 !== idx);
+                n.fieldSections = current.fieldSections.map(v => v === idx ? 0 : (v > idx ? v - 1 : v));
+                n.sectionColors = prevColors.filter((_, ix2) => ix2 !== idx);
+                applyIface(n);
+                setActiveSec(0);
+                setDelSecIdx(null);
+              }}
+            >
+              {t('delete')}
+            </button>
+          </>
+        )}
+      >
+        {delSecIdx !== null && (
+          <div>
+            <p style={{ marginBottom: 6 }}>{t('deleteSectionConfirmMsg')}</p>
+            <div className="pill" style={{ display: 'inline-block' }}>
+              {t('sectionWord')} {(current.sectionNumbers?.[delSecIdx] || String(delSecIdx * 10).padStart(3, '0'))} · {current.sections?.[delSecIdx]}
+            </div>
+          </div>
+        )}
+      </LightModal>
+
+      <LightModal
+        open={delRowIdx !== null}
+        onClose={() => setDelRowIdx(null)}
+        title={t('delete')}
+        footer={(
+          <>
+            <button type="button" className="ghost" onClick={() => setDelRowIdx(null)}>{t('cancel')}</button>
+            <button
+              type="button"
+              className="danger"
+              onClick={() => {
+                const fi = delRowIdx;
+                if (fi === null || fi === undefined) return;
+                const n = cloneIface();
+                n.labels.splice(fi, 1);
+                n.descriptions.splice(fi, 1);
+                n.lengths.splice(fi, 1);
+                n.required.splice(fi, 1);
+                n.types.splice(fi, 1);
+                n.fieldSections.splice(fi, 1);
+                n.flexFields = (n.flexFields || []).slice();
+                n.flexFields.splice(fi, 1);
+                n.separators = n.separators.filter(s => s !== fi).map(s => s > fi ? s - 1 : s);
+                applyIface(n);
+                const vals = loadValues();
+                const arr = (vals[currentId] ?? []).slice();
+                arr.splice(fi, 1);
+                vals[currentId] = arr;
+                saveValues(vals);
+                setDelRowIdx(null);
+              }}
+            >
+              {t('delete')}
+            </button>
+          </>
+        )}
+      >
+        {delRowIdx !== null && (
+          <div>
+            <p style={{ marginBottom: 6 }}>
+              {t('deleteFieldConfirmMsg')}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div className="pill" style={{ display: 'inline-block' }}>
+                {t('sectionWord')} {(current.sectionNumbers?.[activeSec] || String(activeSec * 10).padStart(3, '0'))} · {current.sections?.[activeSec]}
+              </div>
+              <div className="pill" style={{ display: 'inline-block' }}>
+                {t('fieldWord')} #{String(delRowIdx + 1)} · {(current.labels?.[delRowIdx] || t('unnamed'))}
+              </div>
+            </div>
+          </div>
+        )}
+      </LightModal>
+</main>
   )
 }
