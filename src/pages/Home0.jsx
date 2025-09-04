@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom';
-import { loadConfig, saveConfig, loadValues, saveValues as saveValuesCore, timestamp, loadProjects, saveProjects, snapshotProject, applyProject } from '../utils.js';
+import { loadConfig, saveConfig, loadValues, saveValues as saveValuesCore, timestamp, loadProjects, saveProjects, snapshotProject, applyProject, KEY_VALS } from '../utils.js';
 import { t } from '../i18n.js';
 import { fitToLength } from '../utils/fixedWidth.js';
 import { saveTemplate as tplSave } from '../utils.templates.js';
 import ScrollTabs from '../components/ScrollTabs.jsx';
 import GeneratedTabs from '../components/GeneratedTabs.jsx';
 import ConfirmClearModal from '../components/ConfirmClearModal.jsx';
+
 import SaveTemplateModal from '../components/SaveTemplateModal.jsx';
 import DeleteTemplateModal from '../components/DeleteTemplateModal.jsx';
 import { segmentText } from '../segmentation.js';
@@ -23,10 +24,49 @@ export default function Home() {
   const location = useLocation();
   const navigate = useNavigate();
   // remember last seen values payload to avoid redundant/foreign rehydrates
-  const lastValsJsonRef = useRef('');
-  useEffect(() => {
-    try { lastValsJsonRef.current = localStorage.getItem(KEY_VALS) || ''; } catch { }
-  }, []);
+  
+const lastValsJsonRef = useRef('');
+useEffect(() => {
+  try { lastValsJsonRef.current = localStorage.getItem(KEY_VALS) || ''; } catch {}
+}, []);
+
+// ---- Extended columns (Origin, Comment, Default value) ----
+const [extended, setExtended] = useState(() => { try { return localStorage.getItem('tcf_ui_extended') === '1'; } catch { return false; } });
+
+    // width for 3 extra columns in extended mode
+    const extraCol = extended ? 'minmax(0, 1.2fr)' : 'minmax(0, 0fr)';
+    const [extHover, setExtHover] = useState(false);
+    const labelCol = 'var(--label-col, 440px)';
+    const valueCol = extended ? 'minmax(260px, 2fr)' : '1fr';
+
+// ---- Extras local state (independent, unlimited length; persisted to localStorage) ----
+const [extras, setExtras] = useState({});
+const EXTRAS_LS_KEY = React.useMemo(() => 'tcf_field_extras_' + String(id ?? ''), [id]);
+
+useEffect(() => {
+  try {
+    const raw = localStorage.getItem(EXTRAS_LS_KEY);
+    setExtras(raw ? JSON.parse(raw) : {});
+  } catch { setExtras({}); }
+}, [EXTRAS_LS_KEY]);
+
+const setExtra = useCallback((secIdx, fldIdx, key, val) => {
+  setExtras(prev => {
+    const next = { ...prev };
+    if (!next[secIdx]) next[secIdx] = {};
+    if (!next[secIdx][fldIdx]) next[secIdx][fldIdx] = {};
+    next[secIdx][fldIdx][key] = val;
+    try { localStorage.setItem(EXTRAS_LS_KEY, JSON.stringify(next)); } catch {}
+    return next;
+  });
+}, [EXTRAS_LS_KEY]);
+
+useEffect(() => { try { localStorage.setItem('tcf_ui_extended', extended ? '1' : '0'); } catch {} }, [extended]);
+useEffect(() => {
+  const onKey = (e) => { if (e.shiftKey && (e.key === 'e' || e.key === 'E')) { e.preventDefault(); setExtended(v => !v); } };
+  window.addEventListener('keydown', onKey);
+  return () => window.removeEventListener('keydown', onKey);
+}, []);
 
   // --- anti-echo for local saves (cooldown + wrapper) ---
   const SAVE_ECHO_COOLDOWN_MS = 2500;
@@ -1058,14 +1098,21 @@ useEffect(() => {
 
 
 
-    // 3b) Recompute section-usage counters (Introduction badges) after wipe
+    
+// 3b) Recompute section-usage counters (Introduction badges) after wipe
+try {
+  const tabsById = new Map();
+  for (const it of (cfg?.interfaces || [])) {
     try {
-      const tabsMap = tabsByIdFromStorage(); // after removal above, current iface has []
-      const nextVals = { ...valsMap, [iface.id]: Array.from({ length: (iface.labels?.length || 0) }, () => '') };
-      applySectionUsage(nextVals, tabsMap);
-    } catch (e) { }
-
-    // 4) Reset UI anchors
+      const raw = localStorage.getItem('tcf_genTabs_' + String(it.id));
+      const arr = JSON.parse(raw || '[]') || [];
+      tabsById.set(it.id, arr);
+    } catch (e) { tabsById.set(it.id, []); }
+  }
+  const nextVals = { ...valsMap, [iface.id]: Array.from({ length: (iface.labels?.length || 0) }, () => '') };
+  applySectionUsage(nextVals, tabsById);
+} catch (e) { }
+// 4) Reset UI anchors
     setActiveSec(0);
     setColorPicker(null);
   };
@@ -1545,11 +1592,63 @@ useEffect(() => {
             </div>
           ) : (
             <>
-              <div className="secHeader" style={{ margin: '8px 0 6px 0', fontWeight: 600 }}>
-                {(iface.sectionNumbers?.[activeSec] || String(activeSec * 10).padStart(3, '0'))} · {iface.sections[activeSec]}
-              </div>
-              <div className="grid" key={`grid-${iface?.id || "iface"}-${activeSec}-${(typeof window !== "undefined" ? (localStorage.getItem("tcf_genTabs_active_" + String(iface?.id)) || "") : "")}`}>
-                {orderedInSec.map((fi, k) => (
+              
+<div
+  
+
+className="secHeaderBar"
+  style={{
+    position: 'sticky', top: 8, zIndex: 50,
+    display:'flex', alignItems:'center', justifyContent:'space-between',
+    padding: 0, margin: '4px 0 6px',
+    background: 'transparent',
+    border: 'none',
+    borderRadius: 0
+  }}
+>
+
+
+  <div className="secHeader" style={{ fontWeight: 600 }}>
+    {(iface.sectionNumbers?.[activeSec] || String(activeSec * 10).padStart(3, '0'))} · {iface.sections[activeSec]}
+  </div>
+
+  <button
+    type="button"
+    aria-pressed={extended}
+    onClick={() => setExtended(v => !v)}
+    title={`${t('toggleExtended') || 'Toggle extended'} (Shift+E)`}
+    
+
+
+className="extToggle"
+        onMouseEnter={() => setExtHover(true)}
+        onMouseLeave={() => setExtHover(false)}
+        style={{
+          border: extHover ? '1px solid rgba(255,255,255,0.28)' : '1px solid var(--border, rgba(255,255,255,0.18))',
+          background: extHover ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.06)',
+          color: 'var(--text, #e5f0f4)',
+          borderRadius: 14,
+          padding: '6px 12px',
+          fontSize: 12,
+          fontWeight: 700,
+          backdropFilter: 'blur(2px)',
+          boxShadow: extHover ? '0 2px 10px rgba(0,0,0,0.25), inset 0 0 0 1px rgba(0,0,0,0.25)' : 'inset 0 0 0 1px rgba(0,0,0,0.25)',
+          transform: extHover ? 'translateY(-1px)' : 'none',
+          transition: 'all 140ms ease'
+        }}
+      >
+
+
+    {extended ? (t('extendedOn') || 'Extended: ON') : (t('extendedOff') || 'Extended: OFF')}
+  </button>
+</div>
+
+<div
+  className="grid"
+      key={`grid-${iface?.id || 'iface'}-${activeSec}-${(typeof window !== 'undefined' ? (localStorage.getItem('tcf_genTabs_active_' + String(iface?.id)) || '') : '')}`}
+      style={{ gridTemplateColumns: `${labelCol} ${valueCol} ${extraCol} ${extraCol} ${extraCol}`, columnGap: '12px', rowGap: '8px', transition: 'grid-template-columns 240ms ease' }}
+>
+{orderedInSec.map((fi, k) => (
                   <React.Fragment key={`${activeSec}-${fi}`}>
                     {(k > 0 && isDef(orderedInSec[k - 1]) && !isDef(fi)) && <div className="sep" style={{ gridColumn: '1 / -1' }}></div>}
                     {Array.isArray(iface.separators) && iface.separators.includes(fi) && <div className="sep" style={{ gridColumn: '1 / -1' }}></div>}
@@ -1563,7 +1662,36 @@ useEffect(() => {
                         placeholder={isSequenceField(fi) ? "auto" : undefined}
                         onBlur={() => onBlur(fi)} />
                     </FragmentRow>
-                  </React.Fragment>
+
+<div style={{ opacity: extended ? 1 : 0, pointerEvents: extended ? 'auto' : 'none', transition: 'opacity 220ms ease' }}>
+  <input
+    className="inputField"
+    type="text"
+    value={extras?.[activeSec]?.[fi]?.origin ?? ''}
+            onChange={e => setExtra(activeSec, fi, 'origin', e.target.value)}
+    placeholder={t('egSource') || 'eg. ERP/SAP/Manual'}
+  />
+</div>
+<div style={{ opacity: extended ? 1 : 0, pointerEvents: extended ? 'auto' : 'none', transition: 'opacity 220ms ease 40ms' }}>
+  <input
+    className="inputField"
+    type="text"
+    value={extras?.[activeSec]?.[fi]?.comment ?? ''}
+            onChange={e => setExtra(activeSec, fi, 'comment', e.target.value)}
+    placeholder={t('note') || 'Note…'}
+  />
+</div>
+<div style={{ opacity: extended ? 1 : 0, pointerEvents: extended ? 'auto' : 'none', transition: 'opacity 220ms ease 80ms' }}>
+  <input
+    className="inputField"
+    type="text"
+    value={extras?.[activeSec]?.[fi]?.defaultValue ?? ''}
+            onChange={e => setExtra(activeSec, fi, 'defaultValue', e.target.value)}
+    placeholder={t('default') || 'Default…'}
+  />
+</div>
+
+</React.Fragment>
                 ))}
               </div>
               <div className="actions-split">
@@ -1847,8 +1975,8 @@ useEffect(() => {
 
 function LabelBlock({ label, len, desc, req, flex }) {
   return (
-    <div className="labelBlock">
-      <div className="labelRow">
+    <div className="labelBlock" style={{ overflow:'hidden' }}>
+      <div className="labelRow" style={{ whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
         <span className="name">{label}{req ? <span className="reqStar">*</span> : null}</span>
       </div>
       <div className="meta"><span className="small">{flex ? (t('maxLenFlex') || 'Max długość FLEX') : `${t('maxLen') || 'Max długość'}: ${len}`}</span></div>

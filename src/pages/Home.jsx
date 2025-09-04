@@ -12,6 +12,21 @@ import SaveTemplateModal from '../components/SaveTemplateModal.jsx';
 import DeleteTemplateModal from '../components/DeleteTemplateModal.jsx';
 import { segmentText } from '../segmentation.js';
 import { createWorkbookNewFile, downloadWorkbook } from '../utils/excelMapping';
+// --- LS namespace helpers (read both new PROD/DEV key and legacy) ---
+const BASE_URL_PREFIX = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : '/';
+const LS_PREFIX = `intgen:v63:${BASE_URL_PREFIX}`;
+const genTabsKeyNS = (id) => `${LS_PREFIX}:genTabs_${String(id)}`;
+/** Prefer namespaced key; fallback to legacy 'tcf_genTabs_' */
+function readGenTabsLS(id) {
+  try {
+    const ns = localStorage.getItem(genTabsKeyNS(id));
+    if (ns != null) return JSON.parse(ns) || [];
+  } catch {}
+  try {
+    const legacy = localStorage.getItem('tcf_genTabs_' + String(id));
+    return JSON.parse(legacy || '[]') || [];
+  } catch { return []; }
+}
 
 
 // Use "live" values only if the active tab belongs to the same subsection
@@ -267,9 +282,7 @@ useEffect(() => {
   // Only show interfaces that actually contribute lines (have included sections beyond Introduction)
 
   // Generated sections (tabs) storage helper (per interface id)
-  const getGenTabsFor = (ifaceId) => {
-    try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(ifaceId)) || '[]') || []; } catch { return []; }
-  };
+  const getGenTabsFor = (ifaceId) => { try { return readGenTabsLS(ifaceId); } catch { return []; } };
   const usedIds = useMemo(() => {
     const all = (cfg?.interfaces || []);
     const withIncluded = all.filter(itf => {
@@ -291,7 +304,7 @@ useEffect(() => {
     const idxs = (itf.fieldSections || []).map((sec, i) => (sec === sIx ? i : -1)).filter(i => i !== -1);
     if (!idxs.length) return 0;
     try {
-      const g = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || [];
+      const g = readGenTabsLS(itf.id);
       if (Array.isArray(g) && g.length > 0) {
         return g.filter(t => t && Number(t.secIdx) === Number(sIx)).length;
       }
@@ -467,7 +480,7 @@ useEffect(() => {
       const h = (e) => {
         try {
           const k = e && e.key ? String(e.key) : '';
-          if (k.startsWith('tcf_genTabs_')) bumpGenTabs();
+          if (k.startsWith('tcf_genTabs_') || k.includes(':genTabs_')) bumpGenTabs();
         } catch (e) { }
       };
       window.addEventListener('storage', h);
@@ -629,10 +642,10 @@ useEffect(() => {
       const lines = [];
       // Prefer generated tabs (bottom subsections). If present, build from them.
       try {
-        const gen = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || [];
+        const gen = readGenTabsLS(itf.id);
         if (Array.isArray(gen) && gen.length > 0) {
           const linesFromTabs = [];
-          let activeId = null; try { activeId = localStorage.getItem('tcf_genTabs_active_' + String(itf.id)) || null; } catch (e) { }
+          let _activePerSec = null; try { _activePerSec = (id, sIx) => (localStorage.getItem(`${LS_PREFIX}:genTabs_active_${String(id)}_${String(sIx)}`) || localStorage.getItem('tcf_genTabs_active_' + String(id)) || null); } catch (e) { _activePerSec = () => null; }
           for (const tab of gen) {
             const sIx = tab.secIdx;
             const idxs = idxsFor(itf, sIx);
@@ -640,7 +653,8 @@ useEffect(() => {
             // choose source values
             const snap = Array.isArray(tab.snapshot) ? tab.snapshot : vals;
             let rowVals;
-            if (!combineAll && tab.id && activeId && tab.id === activeId && Number(tab.secIdx) === Number(secIdx)) {
+            const __activeId = (!combineAll && itf && iface && itf.id === iface.id) ? _activePerSec(itf.id, sIx) : null;
+            if (!combineAll && __activeId && tab.id === __activeId) {
               // active tab uses live values so textarea updates while typing
               rowVals = idxs.map(i => String((vals[i] ?? '')).trim());
             } else if (snap && typeof snap[0] === 'object' && snap[0] && snap[0].i !== undefined) {
@@ -733,7 +747,7 @@ useEffect(() => {
       const rows = [];
       let gseq = 1;
       const emitRowsFor = (itf, vals) => {
-        const gen = (function () { try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || []; } catch { return []; } })();
+        const gen = (function () { try { return readGenTabsLS(itf.id); } catch { return []; } })();
         if (Array.isArray(gen) && gen.length > 0) {
           for (const tab of gen) {
             const sIx = tab.secIdx;
@@ -833,7 +847,7 @@ useEffect(() => {
         return esc(String(row ?? ''));
       };
       const emitRowsFor = (itf, vals) => {
-        const gen = (function () { try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || []; } catch { return []; } })();
+        const gen = (function () { try { return readGenTabsLS(itf.id); } catch { return []; } })();
         if (Array.isArray(gen) && gen.length > 0) {
           for (const tab of gen) {
             const sIx = tab.secIdx;
@@ -1004,7 +1018,7 @@ useEffect(() => {
         const vals = (valsMap && valsMap[id]) ? valsMap[id] : [];
         const itf = (cfg?.interfaces || []).find(i => i.id === id) || {};
         const incl = Array.isArray(itf.includedSections) ? itf.includedSections : (Array.isArray(itf.sections) ? itf.sections.map(() => false) : []);
-        const gen = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(id)) || '[]') || [];
+        const gen = readGenTabsLS(id);
         byId[id] = { values: vals, includedSections: incl, genTabs: gen };
       }
     } catch (e) { }
@@ -1093,6 +1107,16 @@ useEffect(() => {
       const akey = 'tcf_genTabs_active_' + String(iface.id);
       try { localStorage.removeItem(key); } catch (e) { }
       try { localStorage.removeItem(akey); } catch (e) { }
+      // remove namespaced as well
+      try { localStorage.removeItem(genTabsKeyNS(iface.id)); } catch (e) { }
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(`${LS_PREFIX}:genTabs_active_${String(iface.id)}_`)) {
+            localStorage.removeItem(k);
+          }
+        }
+      } catch (e) { }
       try { bumpGenTabs(); } catch (e) { }
     } catch (e) { console.warn('clearForm: tabs wipe failed', e); }
 
@@ -1175,8 +1199,7 @@ try {
           } else if (tabsById && typeof tabsById === 'object') {
             fromSeg = Object.prototype.hasOwnProperty.call(tabsById, id) ? (tabsById[id] || undefined) : undefined;
           }
-          let stored = [];
-          try { stored = JSON.parse(localStorage.getItem(key) || '[]') || []; } catch (e) { stored = []; }
+          let stored = readGenTabsLS(id);
           tabsMerged.set(id, (typeof fromSeg !== 'undefined') ? (fromSeg || []) : (stored || []));
         }
       } catch (e) { }
@@ -1269,6 +1292,7 @@ try {
       const rest = Array.isArray(arrTabs) ? arrTabs.filter(t => Number(t?.secIdx) !== Number(targetSec)) : [];
       localStorage.setItem(k, JSON.stringify(rest));
       try { localStorage.removeItem('tcf_genTabs_active_' + String(iface.id)); } catch (e) { }
+      try { localStorage.removeItem(`${LS_PREFIX}:genTabs_active_${String(iface.id)}_${String(targetSec)}`); } catch (e) { }
       try { bumpGenTabs(); } catch (e) { }
     } catch (e) { console.warn('clearSection: tabs wipe failed', e); }
 
@@ -1277,8 +1301,7 @@ try {
       const tabsById = new Map();
       for (const it of (cfg?.interfaces || [])) {
         try {
-          const raw = localStorage.getItem('tcf_genTabs_' + String(it.id));
-          const arr = JSON.parse(raw || '[]') || [];
+          const arr = readGenTabsLS(it.id);
           tabsById.set(it.id, arr);
         } catch (e) { }
       }
@@ -1414,7 +1437,7 @@ try {
       });
       if (hasVals) return true;
       const hasTabs = (cfg?.interfaces || []).some(it => {
-        try { const g = JSON.parse(localStorage.getItem('tcf_genTabs_' + String(it.id)) || '[]') || []; return Array.isArray(g) && g.length > 0; } catch { return false; }
+        try { const g = readGenTabsLS(it.id); return Array.isArray(g) && g.length > 0; } catch { return false; }
       });
       if (hasTabs) return true;
       const hasOverlays = (cfg?.interfaces || []).some(it => {
@@ -1435,6 +1458,13 @@ try {
         nextVals[it.id] = Array.from({ length: (it.labels?.length || 0) }, () => '');
         try { localStorage.removeItem('tcf_genTabs_' + String(it.id)); } catch (e) { }
         try { localStorage.removeItem('tcf_genTabs_active_' + String(it.id)); } catch (e) { }
+        try { localStorage.removeItem(genTabsKeyNS(it.id)); } catch (e) { }
+        try {
+          for (let j = localStorage.length - 1; j >= 0; j--) {
+            const k = localStorage.key(j);
+            if (k && k.startsWith(`${LS_PREFIX}:genTabs_active_${String(it.id)}_`)) localStorage.removeItem(k);
+          }
+        } catch (e) { }
       }
       setValsMap(nextVals);
       saveValuesLocal(nextVals);
@@ -1488,8 +1518,7 @@ try {
         const tabsById = new Map();
         for (const it of (cfg?.interfaces || [])) {
           try {
-            const raw = localStorage.getItem('tcf_genTabs_' + String(it.id));
-            const arr = JSON.parse(raw || '[]') || [];
+            const arr = readGenTabsLS(it.id);
             tabsById.set(it.id, Array.isArray(arr) ? arr : []);
           } catch (e) { tabsById.set(it.id, []); }
         }
