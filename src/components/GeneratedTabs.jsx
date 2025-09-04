@@ -35,10 +35,20 @@ export default function GeneratedTabs({
   const [activeId, setActiveId] = useState(() => { try { return localStorage.getItem(activeKey) || null; } catch { return null; } });
   useEffect(() => { setTabs(readTabs()); }, [key]);
 
+  // Keep form values in sync with the active bottom tab (also on first mount / return from Home)
+  // When activeId resolves or tabs change for this section, rehydrate values for indices belonging to the tab's section.
   useEffect(() => {
-    // mark that we just entered this section; first live sync will be ignored
-    try { enteredSecRef.current = (enteredSecRef.current || 0) + 1; } catch {}
-  }, [activeSec]);
+    try {
+      const a = (typeof window !== 'undefined')
+        ? (localStorage.getItem(activeKey) || activeId)
+        : activeId;
+      if (!a) return;
+      const tab = (Array.isArray(tabs) ? tabs : []).find(t => t.id === a);
+      if (!tab) return;
+      applySnapshot(tab); // copies section-specific fields into values[]
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId, activeSec, key, tabs]);
 
   
   // Ensure we select or restore active tab scoped per section (prefer last edited)
