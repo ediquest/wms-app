@@ -9,6 +9,7 @@ import { loadConfig, applyTheme, setThemeLight, setThemeDark, THEME_LIGHT, getRo
 import { getLang, setLang, t } from './i18n.js'
 import { ModalProvider } from './components/Modal.jsx'
 import InterfaceTemplate from './components/InterfaceTemplate.jsx';
+import XmlApp from "./xml/XmlApp.jsx";
 
 // 👉 importujemy stronę powitalną i helper
 import Welcome, { LS_KEY_WELCOME_DISMISSED } from './pages/Welcome.jsx'
@@ -73,6 +74,7 @@ export default function App(){
             <Route path="/welcome" element={<Welcome/>} />
             <Route path="/iface/:id" element={<Home/>} />
             <Route path="/admin" element={<Admin role={role}/>} />
+            <Route path="/xml" element={<XmlApp />} />
           </Routes>
           <footer className="footer">
             <div className="wrap muted">© {new Date().getFullYear()} by Adrian Sarczynski</div>

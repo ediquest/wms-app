@@ -350,3 +350,51 @@ export function applyProject(proj){
 safeDispatch('tcf-values-changed');
   return true;
 }
+
+// ---------------- Field Extras storage ----------------
+export const KEY_FIELD_EXTRAS_PREFIX = 'tcf_field_extras_';
+export const FIELD_EXTRA_KEYS = ['origin', 'comment', 'defaultValue'];
+
+function readFieldExtras(ifaceId) {
+  try {
+    const raw = localStorage.getItem(KEY_FIELD_EXTRAS_PREFIX + String(ifaceId));
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+function writeFieldExtras(ifaceId, data) {
+  try {
+    localStorage.setItem(
+      KEY_FIELD_EXTRAS_PREFIX + String(ifaceId),
+      JSON.stringify(data)
+    );
+  } catch (e) {}
+}
+
+/**
+ * Zwraca wartość extra dla pola:
+ * @param {number|string} ifaceId  - ID interfejsu
+ * @param {number} secIdx          - indeks sekcji
+ * @param {number} fldIdx          - indeks pola (wiersza)
+ * @param {'origin'|'comment'|'defaultValue'} key
+ */
+export function getFieldExtra(ifaceId, secIdx, fldIdx, key) {
+  if (!FIELD_EXTRA_KEYS.includes(key)) return '';
+  const data = readFieldExtras(ifaceId);
+  return data?.[secIdx]?.[fldIdx]?.[key] ?? '';
+}
+
+/**
+ * Ustawia wartość extra dla pola (zapis w localStorage).
+ * Zwraca cały obiekt extras po zapisie.
+ */
+export function setFieldExtra(ifaceId, secIdx, fldIdx, key, value) {
+  if (!FIELD_EXTRA_KEYS.includes(key)) return;
+  const data = readFieldExtras(ifaceId);
+  if (!data[secIdx]) data[secIdx] = {};
+  if (!data[secIdx][fldIdx]) data[secIdx][fldIdx] = {};
+  data[secIdx][fldIdx][key] = value ?? '';
+  writeFieldExtras(ifaceId, data);
+  return data;
+}

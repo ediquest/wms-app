@@ -1,0 +1,119 @@
+/* XML mode styles — Theme Bridge
+   This maps XML mode tokens to your host app CSS variables.
+   It auto-detects popular Tailwind/shadcn tokens (hsl(var(--...))) and
+   also supports custom variables (e.g. --app-*). If your app already sets
+   these tokens, XML mode will instantly match your scheme.
+*/
+.xml-shell {
+  /* Base tokens derived from host app */
+  --bg: var(--app-bg, hsl(var(--background, 0 0% 100%)));
+  --fg: var(--app-fg, hsl(var(--foreground, 222.2 84% 4.9%)));
+  --muted: var(--app-muted, hsl(var(--muted-foreground, 215.4 16.3% 46.9%)));
+  --border: var(--app-border, hsl(var(--border, 214.3 31.8% 91.4%)));
+  --panel: var(--app-panel, hsl(var(--card, var(--muted, var(--background)))));
+  --chip-bg: var(--app-chip-bg, var(--panel));
+  --btn-bg: var(--app-btn-bg, hsl(var(--secondary, var(--card, var(--background)))));
+  --btn-fg: var(--app-btn-fg, hsl(var(--secondary-foreground, var(--foreground))));
+  --btn-border: var(--app-btn-border, var(--border));
+  --btn-bg-hover: var(--app-btn-bg-hover, color-mix(in oklab, var(--btn-bg) 90%, var(--fg) 10%));
+  --input-bg: var(--app-input-bg, hsl(var(--background)));
+  --input-fg: var(--app-input-fg, hsl(var(--foreground)));
+  --input-border: var(--app-input-border, var(--border));
+  --placeholder: var(--app-placeholder, hsl(var(--muted-foreground, 215.4 16.3% 46.9%)));
+  --accent: var(--app-accent, hsl(var(--primary, 217.2 91.2% 59.8%)));
+  --accent-hover: var(--app-accent-hover, hsl(var(--primary, 217.2 91.2% 59.8%)));
+  --on-accent: var(--app-on-accent, hsl(var(--primary-foreground, 210 40% 98%)));
+
+  background-color: var(--bg);
+  color: var(--fg);
+  display:flex; flex-direction:column; height:100%;
+}
+
+/* Optional: if your app toggles .dark or [data-theme="dark"], your own variables will flip.
+   No separate media query needed; we just read your tokens. */
+
+/* Layout */
+.xml-header { display:flex; align-items:center; gap:8px; padding:10px; border-bottom:1px solid var(--border); background: var(--panel); }
+.xml-main { flex:1; overflow:auto; padding:12px; }
+.xml-toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.xml-badge { font-size:12px; padding:2px 6px; border:1px solid var(--border); border-radius:6px; background:var(--chip-bg); color:var(--fg); }
+
+.xml-row { 
+  display:grid; 
+  grid-template-columns: 240px 1fr 220px; 
+  gap:12px; 
+  padding:10px; 
+  border-bottom:1px dashed var(--border); 
+}
+
+.xml-label { font-weight:600; color:var(--fg); }
+.xml-error { color:#ef4444; font-size:12px; }
+.xml-hint { color: var(--muted); font-size:12px; }
+
+/* Controls */
+.xml-controls { display:flex; gap:8px; justify-content:flex-end; }
+
+/* Inputs */
+.xml-input, .xml-select, textarea.xml-input {
+  width:100%;
+  padding:8px 10px;
+  border:1px solid var(--input-border);
+  border-radius:12px;
+  background:var(--input-bg);
+  color:var(--input-fg);
+  outline: none;
+}
+
+.xml-input::placeholder { color: var(--placeholder); }
+
+.xml-input:focus, .xml-select:focus, textarea.xml-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 30%, transparent);
+}
+
+.xml-checkbox { transform: translateY(2px); }
+
+.xml-select { appearance:auto; }
+
+/* Buttons */
+button.xml-btn {
+  padding:10px 14px; 
+  border:1px solid var(--btn-border); 
+  border-radius:14px; 
+  background:var(--btn-bg); 
+  color: var(--btn-fg);
+  cursor:pointer; 
+  transition: background .15s ease, border-color .15s ease, transform .02s ease;
+}
+button.xml-btn:hover { background: var(--btn-bg-hover); }
+button.xml-btn:active { transform: translateY(1px); }
+button.xml-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+button.xml-btn.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+button.xml-btn.primary:hover { background: var(--accent-hover); }
+button.xml-btn.primary:focus-visible { outline-color: var(--accent); }
+
+button.xml-btn[disabled] { opacity:.55; cursor:not-allowed; }
+
+/* Chip, arrays */
+button.xml-chip { 
+  font-size:12px; padding:6px 10px; 
+  border:1px solid var(--btn-border); 
+  background:var(--chip-bg); 
+  color:var(--fg); 
+  border-radius:999px; 
+  cursor:pointer;
+}
+button.xml-chip:hover { background: var(--btn-bg-hover); }
+
+.xml-array { border:1px solid var(--border); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:8px; background: var(--panel); }
+.xml-array-item { display:flex; gap:8px; align-items:center; }
+
+input[type="file"].xml-file { display:block; color:var(--fg); }
+
+/* Small helper for code chips */
+code { background: color-mix(in srgb, var(--panel) 80%, transparent); padding: 2px 6px; border-radius:6px; }
