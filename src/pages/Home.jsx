@@ -12,17 +12,17 @@ import SaveTemplateModal from '../components/SaveTemplateModal.jsx';
 import DeleteTemplateModal from '../components/DeleteTemplateModal.jsx';
 import { segmentText } from '../segmentation.js';
 import { createWorkbookNewFile, downloadWorkbook } from '../utils/excelMapping';
-// --- Tabs reader (DEV/PROD safe) ---
+// --- DEV/PROD-safe tabs reader ---
 function readGenTabsLS(id) {
   const sid = String(id);
-  // 1) exact for current BASE_URL
+  // exact for current BASE_URL
   try {
     const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : '/';
-    const exactKey = `intgen:v63:${base}:genTabs_${sid}`;
-    const exact = localStorage.getItem(exactKey);
-    if (exact != null) return JSON.parse(exact) || [];
+    const k = `intgen:v63:${base}:genTabs_${sid}`;
+    const v = localStorage.getItem(k);
+    if (v != null) return JSON.parse(v) || [];
   } catch (e) {}
-  // 2) scan any namespaced match
+  // scan any namespaced match (handles GH Pages subpaths)
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i) || '';
@@ -32,7 +32,7 @@ function readGenTabsLS(id) {
       }
     }
   } catch (e) {}
-  // 3) legacy fallback
+  // legacy fallback
   try {
     const legacy = localStorage.getItem('tcf_genTabs_' + sid);
     return JSON.parse(legacy || '[]') || [];
@@ -759,7 +759,7 @@ useEffect(() => {
       const rows = [];
       let gseq = 1;
       const emitRowsFor = (itf, vals) => {
-        const gen = (function () { try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || []; } catch { return []; } })();
+        const gen = (function () { try { return readGenTabsLS(itf.id); } catch { return []; } })();
         if (Array.isArray(gen) && gen.length > 0) {
           for (const tab of gen) {
             const sIx = tab.secIdx;
@@ -859,7 +859,7 @@ useEffect(() => {
         return esc(String(row ?? ''));
       };
       const emitRowsFor = (itf, vals) => {
-        const gen = (function () { try { return JSON.parse(localStorage.getItem('tcf_genTabs_' + String(itf.id)) || '[]') || []; } catch { return []; } })();
+        const gen = (function () { try { return readGenTabsLS(itf.id); } catch { return []; } })();
         if (Array.isArray(gen) && gen.length > 0) {
           for (const tab of gen) {
             const sIx = tab.secIdx;
