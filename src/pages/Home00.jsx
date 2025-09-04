@@ -17,37 +17,11 @@ const BASE_URL_PREFIX = (typeof import.meta !== 'undefined' && import.meta.env &
 const LS_PREFIX = `intgen:v63:${BASE_URL_PREFIX}`;
 const genTabsKeyNS = (id) => `${LS_PREFIX}:genTabs_${String(id)}`;
 /** Prefer namespaced key; fallback to legacy 'tcf_genTabs_' */
-/** Prefix-agnostic tabs reader for PROD/DEV:
- *  1) Try the current BASE_URL namespaced key.
- *  2) If not found, scan any intgen:v63:*:genTabs_<ID> (handles GH Pages subpaths).
- *  3) Fallback to legacy 'tcf_genTabs_<ID>'.
- */
 function readGenTabsLS(id) {
-  const sid = String(id);
-  // 1) exact for current BASE_URL
   try {
-    const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : '/';
-    const exactKey = `intgen:v63:${base}:genTabs_${sid}`;
-    const exact = localStorage.getItem(exactKey);
-    if (exact != null) return JSON.parse(exact) || [];
+    const ns = localStorage.getItem(genTabsKeyNS(id));
+    if (ns != null) return JSON.parse(ns) || [];
   } catch {}
-  // 2) scan any namespaced match
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i) || '';
-      if (k.startsWith('intgen:v63:') && k.endsWith(`:genTabs_${sid}`)) {
-        const v = localStorage.getItem(k);
-        if (v != null) return JSON.parse(v) || [];
-      }
-    }
-  } catch {}
-  // 3) legacy fallback
-  try {
-    const legacy = localStorage.getItem('tcf_genTabs_' + sid);
-    return JSON.parse(legacy || '[]') || [];
-  } catch { return []; }
-}
-catch {}
   try {
     const legacy = localStorage.getItem('tcf_genTabs_' + String(id));
     return JSON.parse(legacy || '[]') || [];
