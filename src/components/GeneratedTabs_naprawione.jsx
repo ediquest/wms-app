@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useState, useRef, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { t as tt } from '../i18n.js';
 
 /**
@@ -19,70 +19,24 @@ export default function GeneratedTabs({
   onSwitchSection,
   onChange,
 }) {
-  // --- Namespacing dla DEV/PROD (GitHub Pages) + miękka wersjonizacja
-  const BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL) ? import.meta.env.BASE_URL : '/';
-  const LS_PREFIX = `intgen:v63:${BASE}`;
-
   // Skip first persist right after entering a section
   const enteredSecRef = React.useRef(0);
-  // Blokujemy persist do czasu zakończenia pierwszej rehydratacji
-  const didRehydrateRef = useRef(false);
 
-  // Klucze (nowe) + legacy dla migracji
-  const key = `${LS_PREFIX}:genTabs_${String(iface?.id ?? "")}`;
-  const legacyTabsKey = `tcf_genTabs_${String(iface?.id ?? "")}`;
-
-  const baseActiveKey = `${LS_PREFIX}:genTabs_active_${String(iface?.id ?? "")}`;
+  const key = `tcf_genTabs_${String(iface?.id ?? "")}`;
+  const baseActiveKey = `tcf_genTabs_active_${String(iface?.id ?? "")}`;
   const activeKey = `${baseActiveKey}_${String(activeSec)}`;
-  const legacyActiveKey = `tcf_genTabs_active_${String(iface?.id ?? "")}`;
-
+  const legacyActiveKey = baseActiveKey;
   const lastEditedKey = `${baseActiveKey}_${String(activeSec)}_last`;
-  const legacyLastEditedKey = `${legacyActiveKey}_${String(activeSec)}_last`;
 
-  const readTabs = () => {
-    try {
-      const v = localStorage.getItem(key);
-      if (v) return JSON.parse(v) || [];
-      // migracja ze starego klucza (jednorazowa)
-      const legacy = localStorage.getItem(legacyTabsKey);
-      if (legacy) {
-        const arr = JSON.parse(legacy) || [];
-        try { localStorage.setItem(key, JSON.stringify(arr)); } catch {}
-        return arr;
-      }
-      return [];
-    } catch { return []; }
-  };
+  const readTabs = () => { try { return JSON.parse(localStorage.getItem(key) || "[]") || []; } catch { return []; } };
   const writeTabs = (arr) => { try { localStorage.setItem(key, JSON.stringify(arr)); } catch {} };
 
   const [tabs, setTabs] = useState(readTabs);
-  const [activeId, setActiveId] = useState(() => {
-    try {
-      return localStorage.getItem(activeKey)
-          || localStorage.getItem(legacyLastEditedKey)
-          || localStorage.getItem(legacyActiveKey)
-          || null;
-    } catch { return null; }
-  });
-
+  const [activeId, setActiveId] = useState(() => { try { return localStorage.getItem(activeKey) || null; } catch { return null; } });
   useEffect(() => { setTabs(readTabs()); }, [key]);
 
-  // Rehydratacja wartości do formularza zanim UI wejdzie w kadr (i zanim jakikolwiek persist się uruchomi)
-  useLayoutEffect(() => {
-    try {
-      const a = (typeof window !== 'undefined')
-        ? (localStorage.getItem(activeKey) || activeId || localStorage.getItem(legacyLastEditedKey) || localStorage.getItem(legacyActiveKey))
-        : activeId;
-      if (!a) { didRehydrateRef.current = true; return; }
-      const tab = (Array.isArray(tabs) ? tabs : []).find(t => t.id === a);
-      if (!tab) { didRehydrateRef.current = true; return; }
-      applySnapshot(tab); // wpisuje wartości sekcji do values[]
-      didRehydrateRef.current = true;
-    } catch { didRehydrateRef.current = true; }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeId, activeSec, key, tabs]);
-
-  // Dodatkowa synchronizacja gdy zmieni się aktywna podsekcja / lista tabów (bezpośrednio po powrocie z Home)
+  // Keep form values in sync with the active bottom tab (also on first mount / return from Home)
+  // When activeId resolves or tabs change for this section, rehydrate values for indices belonging to the tab's section.
   useEffect(() => {
     try {
       const a = (typeof window !== 'undefined')
@@ -91,16 +45,17 @@ export default function GeneratedTabs({
       if (!a) return;
       const tab = (Array.isArray(tabs) ? tabs : []).find(t => t.id === a);
       if (!tab) return;
-      applySnapshot(tab);
+      applySnapshot(tab); // copies section-specific fields into values[]
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId, activeSec, key, tabs]);
 
+  
   // Ensure we select or restore active tab scoped per section (prefer last edited)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(activeKey);
-      const last = localStorage.getItem(lastEditedKey) || localStorage.getItem(legacyLastEditedKey);
+      const last = localStorage.getItem(lastEditedKey);
       const prefer = last || saved || null;
       const inSec = Array.isArray(tabs) ? tabs.filter(t => Number(t.secIdx) === Number(activeSec)) : [];
       let chosen = null;
@@ -125,6 +80,7 @@ export default function GeneratedTabs({
       }
     } catch {}
   }, [tabs, activeSec, activeKey, lastEditedKey, activeId]);
+
 
   const idxsFor = useCallback((itf, sIx) => {
     const arr = (itf?.fieldSections || []);
@@ -170,7 +126,6 @@ export default function GeneratedTabs({
   // Zapis bieżących wartości do aktywnej zakładki, jeśli się zmieniły
   const persistActiveSnapshot = useCallback((vals) => {
     try {
-      if (!didRehydrateRef.current) return false; // nie zapisuj zanim skończymy rehydratację
       let id = null;
       if (typeof window !== "undefined") {
         try { id = localStorage.getItem(lastEditedKey) || localStorage.getItem(activeKey) || activeId; } catch { id = activeId; }
@@ -190,9 +145,7 @@ export default function GeneratedTabs({
       writeTabs(next);
       return true;
     } catch { return false; }
-  }, [activeId, tabs, key, activeKey, lastEditedKey]);
-
-  // Auto-utworzenie pierwszej zakładki po wpisaniu w bieżącej sekcji
+  }, [activeId, tabs, key]);// Auto-utworzenie pierwszej zakładki po wpisaniu w bieżącej sekcji
   const autoCreateFromValues = useCallback(() => {
     const secIdx = activeSec;
     const idxs = idxsFor(iface, secIdx);
@@ -216,9 +169,7 @@ export default function GeneratedTabs({
     setActiveId(id);
     if (typeof onChange === "function") onChange();
     return true;
-  }, [values, activeSec, iface, tabs, activeId, key, onChange, activeKey, lastEditedKey]);
-
-  // Ręczne dodanie nowej podsekcji dla bieżącej sekcji (przycisk +)
+  }, [values, activeSec, iface, tabs, activeId, key, onChange]);// Ręczne dodanie nowej podsekcji dla bieżącej sekcji (przycisk +)
   const addTabForCurrent = useCallback(() => {
     const secIdx = activeSec;
     const secNo = secNoFor(secIdx);
@@ -231,9 +182,7 @@ export default function GeneratedTabs({
     try { localStorage.setItem(lastEditedKey, id); } catch {}
     setActiveId(id);
     if (typeof onChange === "function") onChange();
-  }, [activeSec, values, tabs, key, onChange, activeKey, lastEditedKey]);
-
-  // Otwieranie / usuwanie
+  }, [activeSec, values, tabs, key, onChange]);// Otwieranie / usuwanie
   const onOpen = useCallback((tab) => {
     if (typeof onSwitchSection === "function") onSwitchSection(tab.secIdx);
     try { localStorage.setItem(activeKey, tab.id); } catch {}
@@ -249,9 +198,7 @@ export default function GeneratedTabs({
       }
     } catch {}
     if (typeof onChange === "function") onChange();
-  }, [onSwitchSection, tabs, onChange, activeKey, lastEditedKey]);
-
-  const onRemove = useCallback((tab) => {
+  }, [onSwitchSection, tabs, onChange]);const onRemove = useCallback((tab) => {
     const next = tabs.filter(t => t.id !== tab.id);
     setTabs(next);
     writeTabs(next);
@@ -261,12 +208,11 @@ export default function GeneratedTabs({
       // keep last known; do not remove to avoid bounce
     }
     if (typeof onChange === "function") onChange();
-  }, [tabs, activeId, key, onChange, activeKey]);
+  }, [tabs, activeId, key, onChange]);
 
   // Live synchronizacja textarea podczas pisania
   const prevValsStrRef = useRef("");
   useEffect(() => {
-    if (!didRehydrateRef.current) return; // nie strzelaj zanim załaduje się poprawny snapshot
     const s = JSON.stringify(values || []);
     if (s === prevValsStrRef.current) return;
     prevValsStrRef.current = s;
@@ -290,7 +236,6 @@ export default function GeneratedTabs({
   // Flush przy opuszczaniu widoku / nawigacji
   useEffect(() => {
     const flush = () => {
-      if (!didRehydrateRef.current) return;
       try {
         const latest = JSON.parse(prevValsStrRef.current || "[]");
         persistActiveSnapshot(latest);
@@ -306,8 +251,7 @@ export default function GeneratedTabs({
       window.removeEventListener('pagehide', flush);
     };
   }, [persistActiveSnapshot, values]);
-
-  // Etykiety 010-1, 010-2, ...
+// Etykiety 010-1, 010-2, ...
   const labeledTabs = useMemo(() => {
     const counts = {};
     return (tabs || []).map(t => {
